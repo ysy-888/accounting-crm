@@ -12,6 +12,18 @@ Static site, no build step. Serve the folder and open it:
 npx http-server -c-1 .
 ```
 
+## Before committing js/ or crm.css changes
+
+```bash
+node scripts/stamp-assets.js
+```
+
+GitHub Pages serves assets with `Cache-Control: max-age=600` and no content
+hash in the filename, so without this a browser happily runs cached old JS
+against new HTML — which produces a half-updated app rather than an obvious
+failure. The script rewrites the `?v=` on every local asset reference in
+index.html so the URLs change on every deploy.
+
 ## Layout
 
 | Path | What it is |
