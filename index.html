@@ -257,27 +257,47 @@
         <input type="text" class="form-input" id="companyFormLocation" autocomplete="off" placeholder="City, State" />
       </label>
 
-      <fieldset class="form-field form-field--full">
-        <legend class="form-label">Payroll schedule</legend>
-        <span class="form-hint">A company can run more than one — pick every schedule in use.</span>
-        <div class="form-checkbox-row" id="companyFormPayroll"></div>
-      </fieldset>
+      <!-- Payroll and Sales Tax own the settings nested under them; the
+           remaining services are plain on/off. -->
+      <div class="form-field--full service-block" data-service="payroll">
+        <div class="service-block-head">
+          <span class="service-block-name">Payroll</span>
+          <label class="switch">
+            <input type="checkbox" name="service" value="payroll" aria-label="Payroll service" />
+            <span class="switch-track"></span>
+            <span class="switch-thumb"></span>
+          </label>
+        </div>
+        <div class="service-block-body" data-body-for="payroll">
+          <div class="service-block-row">
+            <span class="form-label">Payroll schedule</span>
+            <div class="form-checkbox-row" id="companyFormPayroll"></div>
+          </div>
+          <div class="service-block-row">
+            <span class="form-label">Payroll tax</span>
+            <div class="form-toggle-row" id="companyFormPayrollTax"></div>
+          </div>
+        </div>
+      </div>
 
-      <label class="form-field">
-        <span class="form-label">Payroll tax</span>
-        <select class="form-input" id="companyFormPayrollTax"></select>
-      </label>
+      <div class="form-field--full service-block" data-service="salesTax">
+        <div class="service-block-head">
+          <span class="service-block-name">Sales Tax</span>
+          <label class="switch">
+            <input type="checkbox" name="service" value="salesTax" aria-label="Sales Tax service" />
+            <span class="switch-track"></span>
+            <span class="switch-thumb"></span>
+          </label>
+        </div>
+        <div class="service-block-body" data-body-for="salesTax">
+          <div class="service-block-row">
+            <span class="form-label">Sales tax schedule</span>
+            <div class="form-toggle-row" id="companyFormSalesTax"></div>
+          </div>
+        </div>
+      </div>
 
-      <label class="form-field">
-        <span class="form-label">Sales tax</span>
-        <select class="form-input" id="companyFormSalesTax"></select>
-      </label>
-
-      <fieldset class="form-field form-field--full form-field--services">
-        <legend class="form-label">Services</legend>
-        <span class="form-hint">Which services this client is signed up for. Enabled services become sections on the company page.</span>
-        <div class="form-services-grid" id="companyFormServices"></div>
-      </fieldset>
+      <div class="form-field--full service-toggles" id="companyFormServices"></div>
     </form>
 
     <div class="modal-footer">

@@ -26,8 +26,25 @@ function isCompanyMultiValueColumn(col) {
   return COMPANY_MULTI_VALUE_COLUMNS.has(col);
 }
 
+/**
+ * The service a schedule column belongs to. A schedule is only meaningful
+ * when the client actually buys that service, so the columns read blank when
+ * it is switched off — the stored value is kept for when it comes back.
+ */
+const COMPANY_COLUMN_SERVICE = {
+  "Payroll": "payroll",
+  "Payroll Tax": "payroll",
+  "Sales Tax": "salesTax",
+};
+
+function isCompanyColumnServiceActive(company, col) {
+  const service = COMPANY_COLUMN_SERVICE[col];
+  return !service || company.services?.[service] === true;
+}
+
 /** Always an array — the uniform shape filters and rendering work against. */
 function getCompanyColumnValues(company, col) {
+  if (!isCompanyColumnServiceActive(company, col)) return [];
   if (col === "Payroll") return company.payrollSchedules ?? [];
   const single = getCompanyColumnValue(company, col);
   return single ? [single] : [];
@@ -43,9 +60,12 @@ function getCompanyColumnValue(company, col) {
     case "Company":     return company.name;
     case "Owner":       return getCompanyOwnerName(company);
     case "Location":    return company.location;
-    case "Payroll":     return (company.payrollSchedules ?? []).join(", ");
-    case "Payroll Tax": return company.payrollTax;
-    case "Sales Tax":   return company.salesTax;
+    case "Payroll":
+      return isCompanyColumnServiceActive(company, col)
+        ? (company.payrollSchedules ?? []).join(", ")
+        : "";
+    case "Payroll Tax": return isCompanyColumnServiceActive(company, col) ? company.payrollTax : "";
+    case "Sales Tax":   return isCompanyColumnServiceActive(company, col) ? company.salesTax : "";
     default:            return "";
   }
 }

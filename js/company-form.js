@@ -26,22 +26,7 @@ function fillOwnerSelect() {
   }));
 }
 
-function fillScheduleSelect(selectId, options, blankLabel) {
-  const select = document.getElementById(selectId);
-  if (!select) return;
-
-  const blank = document.createElement("option");
-  blank.value = "";
-  blank.textContent = blankLabel;
-
-  select.replaceChildren(blank, ...options.map(value => {
-    const option = document.createElement("option");
-    option.value = value;
-    option.textContent = value;
-    return option;
-  }));
-}
-
+/** Payroll runs several schedules at once, so these are real checkboxes. */
 function fillPayrollCheckboxes() {
   const row = document.getElementById("companyFormPayroll");
   if (!row) return;
@@ -55,14 +40,14 @@ function fillPayrollCheckboxes() {
     input.value = schedule;
     input.name = "payrollSchedule";
 
-    const dot = document.createElement("span");
-    dot.className = "form-check-dot";
-    dot.setAttribute("aria-hidden", "true");
+    const box = document.createElement("span");
+    box.className = "form-check-box";
+    box.setAttribute("aria-hidden", "true");
 
     const text = document.createElement("span");
     text.textContent = schedule;
 
-    label.append(input, dot, text);
+    label.append(input, box, text);
     return label;
   }));
 }
@@ -73,35 +58,73 @@ function getSelectedPayrollSchedules() {
 }
 
 /**
- * Service switches. These live here rather than on the company page so the
- * page itself only shows what the client actually buys.
+ * Single-choice settings render as a small button group rather than a select —
+ * there are only two or three options and they read better laid out.
+ * Clicking the active button clears it.
  */
+function fillToggleButtons(containerId, options, ariaLabel) {
+  const row = document.getElementById(containerId);
+  if (!row) return;
+  row.setAttribute("role", "group");
+  row.setAttribute("aria-label", ariaLabel);
+
+  row.replaceChildren(...options.map(value => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "form-toggle-btn";
+    btn.dataset.value = value;
+    btn.textContent = value;
+    btn.setAttribute("aria-pressed", "false");
+    btn.addEventListener("click", () => {
+      const wasActive = btn.classList.contains("is-active");
+      row.querySelectorAll(".form-toggle-btn").forEach(other => {
+        other.classList.remove("is-active");
+        other.setAttribute("aria-pressed", "false");
+      });
+      if (!wasActive) {
+        btn.classList.add("is-active");
+        btn.setAttribute("aria-pressed", "true");
+      }
+    });
+    return btn;
+  }));
+}
+
+function setToggleButtonValue(containerId, value) {
+  document.querySelectorAll(`#${containerId} .form-toggle-btn`).forEach(btn => {
+    const active = btn.dataset.value === value;
+    btn.classList.toggle("is-active", active);
+    btn.setAttribute("aria-pressed", active ? "true" : "false");
+  });
+}
+
+function getToggleButtonValue(containerId) {
+  return document.querySelector(`#${containerId} .form-toggle-btn.is-active`)?.dataset.value ?? "";
+}
+
+/** The services with no settings of their own — just on or off. */
+const PLAIN_SERVICE_KEYS = SERVICE_KEYS.filter(key => key !== "payroll" && key !== "salesTax");
+
 function fillServiceSwitches() {
   const grid = document.getElementById("companyFormServices");
   if (!grid) return;
 
-  grid.replaceChildren(...SERVICES.map(service => {
+  grid.replaceChildren(...PLAIN_SERVICE_KEYS.map(key => {
     const row = document.createElement("div");
     row.className = "form-service";
-    row.dataset.service = service.key;
+    row.dataset.service = key;
 
-    const text = document.createElement("div");
-    text.className = "form-service-text";
     const name = document.createElement("span");
     name.className = "form-service-name";
-    name.textContent = service.label;
-    const hint = document.createElement("span");
-    hint.className = "form-service-hint";
-    hint.textContent = service.hint;
-    text.append(name, hint);
+    name.textContent = getServiceLabel(key);
 
     const label = document.createElement("label");
     label.className = "switch";
     const input = document.createElement("input");
     input.type = "checkbox";
     input.name = "service";
-    input.value = service.key;
-    input.setAttribute("aria-label", service.label);
+    input.value = key;
+    input.setAttribute("aria-label", getServiceLabel(key));
     const track = document.createElement("span");
     track.className = "switch-track";
     const thumb = document.createElement("span");
@@ -110,7 +133,7 @@ function fillServiceSwitches() {
 
     input.addEventListener("change", () => row.classList.toggle("is-on", input.checked));
 
-    row.append(text, label);
+    row.append(name, label);
     return row;
   }));
 }
@@ -118,9 +141,30 @@ function fillServiceSwitches() {
 function getSelectedServices() {
   const services = {};
   SERVICE_KEYS.forEach(key => { services[key] = false; });
-  document.querySelectorAll('#companyFormServices input[name="service"]:checked')
+  document.querySelectorAll('#companyForm input[name="service"]:checked')
     .forEach(input => { services[input.value] = true; });
   return services;
+}
+
+/**
+ * A service's settings are meaningless when the client hasn't bought it, so
+ * switching the service off disables everything nested under it. The values
+ * are kept, so switching it back on restores what was there.
+ */
+function syncServiceBlockState(serviceKey) {
+  const block = document.querySelector(`.service-block[data-service="${serviceKey}"]`);
+  const toggle = document.querySelector(`#companyForm input[name="service"][value="${serviceKey}"]`);
+  const body = document.querySelector(`.service-block-body[data-body-for="${serviceKey}"]`);
+  if (!block || !toggle || !body) return;
+
+  const on = toggle.checked;
+  block.classList.toggle("is-on", on);
+  body.classList.toggle("is-disabled", !on);
+  body.querySelectorAll("input, button").forEach(el => { el.disabled = !on; });
+}
+
+function syncAllServiceBlockStates() {
+  ["payroll", "salesTax"].forEach(syncServiceBlockState);
 }
 
 // ── Open / close ─────────────────────────────────────────────────────────────
@@ -151,8 +195,8 @@ function openCompanyForm(companyId = null) {
   fillOwnerSelect();
   fillPayrollCheckboxes();
   fillServiceSwitches();
-  fillScheduleSelect("companyFormPayrollTax", PAYROLL_TAX_SCHEDULES, "— None —");
-  fillScheduleSelect("companyFormSalesTax", SALES_TAX_SCHEDULES, "— None —");
+  fillToggleButtons("companyFormPayrollTax", PAYROLL_TAX_SCHEDULES, "Payroll tax deposit schedule");
+  fillToggleButtons("companyFormSalesTax", SALES_TAX_SCHEDULES, "Sales tax filing schedule");
 
   const title = document.getElementById("companyFormTitle");
   if (title) title.textContent = company ? "Edit company details" : "Add company";
@@ -163,10 +207,9 @@ function openCompanyForm(companyId = null) {
   if (locationInput) locationInput.value = company?.location ?? "";
   const ownerSelect = document.getElementById("companyFormOwner");
   if (ownerSelect) ownerSelect.value = company?.ownerId ?? "";
-  const payrollTaxSelect = document.getElementById("companyFormPayrollTax");
-  if (payrollTaxSelect) payrollTaxSelect.value = company?.payrollTax ?? "";
-  const salesTaxSelect = document.getElementById("companyFormSalesTax");
-  if (salesTaxSelect) salesTaxSelect.value = company?.salesTax ?? "";
+
+  setToggleButtonValue("companyFormPayrollTax", company?.payrollTax ?? "");
+  setToggleButtonValue("companyFormSalesTax", company?.salesTax ?? "");
 
   const selected = new Set(company?.payrollSchedules ?? []);
   document.querySelectorAll('#companyFormPayroll input[name="payrollSchedule"]').forEach(input => {
@@ -175,10 +218,11 @@ function openCompanyForm(companyId = null) {
 
   // New companies start with every service on — the common case is a client
   // buying the full package, and unticking is quicker than ticking five.
-  document.querySelectorAll('#companyFormServices input[name="service"]').forEach(input => {
+  document.querySelectorAll('#companyForm input[name="service"]').forEach(input => {
     input.checked = company ? company.services[input.value] === true : true;
     input.closest(".form-service")?.classList.toggle("is-on", input.checked);
   });
+  syncAllServiceBlockStates();
 
   clearCompanyFormErrors();
   overlay.classList.add("open");
@@ -213,8 +257,8 @@ async function saveCompanyForm() {
     ownerId: document.getElementById("companyFormOwner")?.value ?? "",
     location: (document.getElementById("companyFormLocation")?.value ?? "").trim(),
     payrollSchedules: getSelectedPayrollSchedules(),
-    payrollTax: document.getElementById("companyFormPayrollTax")?.value ?? "",
-    salesTax: document.getElementById("companyFormSalesTax")?.value ?? "",
+    payrollTax: getToggleButtonValue("companyFormPayrollTax"),
+    salesTax: getToggleButtonValue("companyFormSalesTax"),
     services: getSelectedServices(),
   };
 
@@ -304,10 +348,17 @@ function initCompanyForm() {
 
   document.getElementById("companyFormName")?.addEventListener("input", clearCompanyFormErrors);
 
+  // Turning a service off greys out everything nested under it.
+  document.querySelectorAll('.service-block input[name="service"]').forEach(toggle => {
+    toggle.addEventListener("change", () => syncServiceBlockState(toggle.value));
+  });
+
   // Enter submits from any single-line input; the form has no submit button.
+  // Buttons and checkboxes keep their own Enter/Space behaviour.
   document.getElementById("companyForm")?.addEventListener("keydown", e => {
     if (e.key !== "Enter") return;
-    if (e.target.tagName === "TEXTAREA") return;
+    if (e.target.tagName === "TEXTAREA" || e.target.tagName === "BUTTON") return;
+    if (e.target.type === "checkbox") return;
     e.preventDefault();
     saveCompanyForm();
   });

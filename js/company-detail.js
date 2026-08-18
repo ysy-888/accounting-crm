@@ -18,11 +18,10 @@ function renderCompanyHeaderPills(company) {
   const wrap = document.getElementById("companyDetailPills");
   if (!wrap) return;
 
-  const groups = [
-    { label: "Payroll", values: company.payrollSchedules ?? [] },
-    { label: "Payroll Tax", values: company.payrollTax ? [company.payrollTax] : [] },
-    { label: "Sales Tax", values: company.salesTax ? [company.salesTax] : [] },
-  ].filter(group => group.values.length > 0);
+  // Same rule as the table: a schedule only shows when its service is on.
+  const groups = ["Payroll", "Payroll Tax", "Sales Tax"]
+    .map(label => ({ label, values: getCompanyColumnValues(company, label) }))
+    .filter(group => group.values.length > 0);
 
   if (groups.length === 0) {
     wrap.replaceChildren();
