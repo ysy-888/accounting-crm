@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Practice CRM</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml" />
+<link rel="stylesheet" href="crm.css?v=20260817-01" />
+</head>
+<body>
+
+<header class="app-header">
+  <nav class="app-title-nav" role="tablist" aria-label="Main views">
+    <button type="button" class="app-logo-text" id="navLogoDashboard" title="Dashboard">Practice CRM</button>
+    <button type="button" class="app-title-tab is-active" id="navTabCompanies" role="tab" aria-selected="true">Companies</button>
+    <button type="button" class="app-title-tab" id="navTabOwners" role="tab" aria-selected="false">Owners</button>
+  </nav>
+  <div class="header-right">
+    <div class="header-greeting" id="headerGreeting" hidden>
+      Hello, <span class="header-greeting-name" id="headerGreetingName"></span>
+    </div>
+    <button type="button" class="btn btn-primary btn-icon" id="refreshBtn" aria-label="Refresh">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="M1 4v6h6M23 20v-6h-6"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
+    </button>
+    <div class="header-menu-wrap">
+      <button type="button" class="btn btn-icon" id="headerMenuBtn" aria-label="Menu" aria-haspopup="menu" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="1.75"/><circle cx="12" cy="12" r="1.75"/><circle cx="12" cy="19" r="1.75"/></svg>
+      </button>
+      <div id="headerMenuDropdown" class="header-menu-dropdown" hidden role="menu">
+        <button type="button" class="header-menu-item" id="headerMenuExportCsv" role="menuitem">
+          <svg class="header-menu-item-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 3v12"/></svg>
+          <span>Export CSV</span>
+        </button>
+        <button type="button" class="header-menu-item header-menu-item-separator" id="headerMenuResetData" role="menuitem">
+          <svg class="header-menu-item-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 2v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L3 8"/></svg>
+          <span>Reset demo data</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ── Companies toolbar ─────────────────────────────────────── -->
+<div id="companiesToolbar" class="toolbar" hidden>
+  <div class="toolbar-filter-cluster">
+    <div class="toolbar-filter-section">
+      <div class="filter-btn-group" id="companyServiceFilters" role="group" aria-label="Service"></div>
+    </div>
+  </div>
+
+  <div class="toolbar-end">
+    <div class="counter toolbar-row-counter" id="companiesRowCounter">— companies</div>
+    <div class="search-wrap toolbar-search-wrap">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input type="search" id="companySearchInput" placeholder="Search" />
+      <div class="search-input-overlay" id="companySearchInputOverlay" aria-hidden="true"></div>
+    </div>
+    <button type="button" class="btn btn-secondary" id="companiesClearAllFiltersBtn" hidden>
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M7 12h10"/><path d="M10 18h4"/><path d="m14 4-4 16"/></svg>
+      Clear all filters
+    </button>
+  </div>
+</div>
+
+<div id="appMain" class="app-main">
+
+  <!-- ── Companies list ──────────────────────────────────────── -->
+  <div id="companiesTableWrap" class="table-scroll-y" hidden>
+    <div class="table-scroll-x">
+    <table id="companiesTable">
+      <colgroup>
+        <col class="col-company"  data-col="Company" />
+        <col class="col-owner"    data-col="Owner" />
+        <col class="col-location" data-col="Location" />
+        <col class="col-schedule" data-col="Payroll" />
+        <col class="col-schedule" data-col="Payroll Tax" />
+        <col class="col-schedule" data-col="Sales Tax" />
+        <col class="col-services" data-col="Services" />
+      </colgroup>
+      <thead>
+        <tr>
+          <th class="th-filterable" data-col="Company"><span class="th-label">Company Name</span></th>
+          <th class="th-filterable" data-col="Owner"><span class="th-label">Owner</span></th>
+          <th class="th-filterable" data-col="Location"><span class="th-label">Location</span></th>
+          <th class="th-filterable" data-col="Payroll"><span class="th-label">Payroll</span></th>
+          <th class="th-filterable" data-col="Payroll Tax"><span class="th-label">Payroll Tax</span></th>
+          <th class="th-filterable" data-col="Sales Tax"><span class="th-label">Sales Tax</span></th>
+          <th class="th-no-sort" data-col="Services">Services</th>
+        </tr>
+      </thead>
+      <tbody id="companiesTableBody">
+        <tr class="state-row"><td colspan="7">Loading companies…</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+
+  <!-- ── Company detail (full page) ──────────────────────────── -->
+  <div id="companyDetailView" class="company-detail" hidden>
+    <div class="company-detail-inner">
+      <div class="company-detail-topbar">
+        <button type="button" class="company-back-btn" id="companyDetailBackBtn">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+          Companies
+        </button>
+      </div>
+
+      <div class="company-detail-header">
+        <div>
+          <div class="company-detail-title" id="companyDetailTitle">—</div>
+          <div class="company-detail-subtitle" id="companyDetailSubtitle"></div>
+        </div>
+      </div>
+
+      <div class="company-info-grid" id="companyInfoGrid"></div>
+
+      <section class="company-services">
+        <div class="company-section-title">Services</div>
+        <div class="company-services-grid" id="companyServicesGrid"></div>
+      </section>
+
+      <div class="company-section-tabs" id="companySectionTabs" role="tablist" aria-label="Company sections"></div>
+      <div class="company-section-panel" id="companySectionPanel"></div>
+    </div>
+  </div>
+
+  <!-- ── Owners (placeholder for the next build step) ────────── -->
+  <div id="ownersView" class="company-detail" hidden>
+    <div class="company-detail-inner">
+      <div class="company-section-panel">
+        <div class="company-section-empty">
+          <div class="company-section-empty-title">Owners</div>
+          <div class="company-section-empty-text">
+            Owners are already modelled in the data layer and drive the Owner column
+            and filter on the Companies tab. The Owners page itself is the next build step.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer id="appFooter" class="app-footer">
+  <div class="app-footer-message-slot">
+    <div class="save-indicator-wrap" id="saveIndicatorWrap" hidden>
+      <div class="save-indicator" id="saveIndicator" role="alert" aria-live="polite"></div>
+      <button type="button" class="message-dismiss-btn save-indicator-dismiss" id="saveIndicatorDismiss" aria-label="Dismiss message" hidden>✕</button>
+    </div>
+  </div>
+  <div id="appFooterEnd" class="app-footer-end">
+    <div class="pagination-block">
+      <nav class="pagination" id="paginationNav" hidden aria-label="Table pages">
+        <button type="button" class="btn btn-page" id="pageFirst" title="First page" aria-label="First page">«</button>
+        <button type="button" class="btn btn-page" id="pagePrev" title="Previous page" aria-label="Previous page">‹</button>
+        <span class="page-indicator" id="pageIndicator">1 / 1</span>
+        <button type="button" class="btn btn-page" id="pageNext" title="Next page" aria-label="Next page">›</button>
+        <button type="button" class="btn btn-page" id="pageLast" title="Last page" aria-label="Last page">»</button>
+      </nav>
+      <label class="page-size-control">
+        <span class="page-size-label">Rows</span>
+        <select id="pageSizeSelect" class="filter-select page-size-select" aria-label="Rows per page">
+          <option value="30">30</option>
+          <option value="60" selected>60</option>
+          <option value="120">120</option>
+          <option value="all">All</option>
+        </select>
+      </label>
+    </div>
+  </div>
+</footer>
+
+<!-- ── Column filter popover ─────────────────────────────────── -->
+<div id="columnFilterPopover" class="column-filter-popover" hidden>
+  <div class="column-filter-toolbar" id="columnFilterToolbar">
+    <button type="button" class="column-filter-link" id="columnFilterSelectAll">Select all</button>
+    <span class="column-filter-sep" id="columnFilterSelectSep">|</span>
+    <button type="button" class="column-filter-link" id="columnFilterClearAll">Clear all</button>
+  </div>
+  <div class="column-filter-list" id="columnFilterList"></div>
+  <div class="column-filter-footer">
+    <button type="button" class="btn btn-primary column-filter-ok" id="columnFilterOk">OK</button>
+    <button type="button" class="btn column-filter-cancel" id="columnFilterCancel">Cancel</button>
+  </div>
+</div>
+
+<div id="appSavingOverlay" class="app-saving-overlay" aria-hidden="false">
+  <div class="app-saving-backdrop"></div>
+  <div class="app-saving-panel" role="status" aria-live="polite">
+    <div class="app-saving-spinner" aria-hidden="true"></div>
+    <p class="app-saving-message" id="appSavingMessage">Loading...</p>
+  </div>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/util.js"></script>
+<script src="js/store.js"></script>
+<script src="js/app-shell.js"></script>
+<script src="js/companies-filters.js"></script>
+<script src="js/companies.js"></script>
+<script src="js/company-detail.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
