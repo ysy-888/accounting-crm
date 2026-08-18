@@ -10,6 +10,8 @@
  *   Bi-Weekly     an anchor pay date, then every 14 days
  *
  * Payroll tax deposit due date, derived from each pay date
+ *   Quarterly depositor    the last day of the month after the quarter ends
+ *                          (Form 941: Apr 30, Jul 31, Oct 31, Jan 31)
  *   Monthly depositor      the 15th of the following month
  *   Semi-Weekly depositor  pay date Sat/Sun/Mon/Tue  -> that week's upcoming Friday
  *                          pay date Wed/Thu/Fri      -> the following Wednesday
@@ -159,6 +161,14 @@ function generateBiWeeklyPayDates(group, from, to) {
  * `depositor` is "Monthly" or "Semi-Weekly"; anything else yields null.
  */
 function taxDueDateForPayDate(payDate, depositor) {
+  if (depositor === "Quarterly") {
+    // The Form 941 deadline: the last day of the month after the calendar
+    // quarter the pay date falls in. Every run in a quarter resolves to the
+    // same date, so they collapse into one deposit (see buildPayrollTasks).
+    const quarterEndMonth = Math.floor(payDate.getMonth() / 3) * 3 + 2;
+    return lastDayOfMonth(payDate.getFullYear(), quarterEndMonth + 1);
+  }
+
   if (depositor === "Monthly") {
     // The 15th of the month after the pay date's month.
     return new Date(payDate.getFullYear(), payDate.getMonth() + 1, 15);

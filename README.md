@@ -77,7 +77,7 @@ Schedule options:
   - Monthly — pay date is the end of every month
   - Semi-Monthly — the 15th and the end of every month
   - Bi-Weekly — every other chosen weekday, anchored to a first pay date
-- **Payroll Tax** — Monthly (due the 15th of the following month), Semi-Weekly
+- **Payroll Tax** — Quarterly, Monthly, Semi-Weekly
 - **Sales Tax** — Quarterly, Y6, Y12
 
 ## The five service areas
@@ -129,6 +129,7 @@ All of this lives in `js/payroll-schedule.js`.
 | Monthly pay | Last day of every month |
 | Semi-Monthly pay | The 15th and the last day of every month |
 | Bi-Weekly pay | Anchor pay date, then every 14 days |
+| Quarterly deposit | The last day of the month after the quarter ends — the Form 941 deadline (Apr 30, Jul 31, Oct 31, Jan 31) |
 | Monthly deposit | The 15th of the following month |
 | Semi-Weekly deposit | Pay date Sat/Sun/Mon/Tue → that week's upcoming Friday. Pay date Wed/Thu/Fri → the following Wednesday |
 

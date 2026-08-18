@@ -38,10 +38,14 @@ const PAYROLL_SCHEDULES = ["Monthly", "Semi-Monthly", "Bi-Weekly"];
 
 /**
  * Payroll tax deposit cadence (IRS depositor status).
+ *   Quarterly    — due the last day of the month after the quarter ends
+ *                  (the Form 941 deadline: Apr 30, Jul 31, Oct 31, Jan 31)
  *   Monthly      — due the 15th of the following month
- *   Semi-Weekly  — due relative to each pay date (see PAYROLL_TAX_RULES)
+ *   Semi-Weekly  — due relative to each pay date
+ *
+ * Listed longest-period first, matching how the schedule columns sort.
  */
-const PAYROLL_TAX_SCHEDULES = ["Monthly", "Semi-Weekly"];
+const PAYROLL_TAX_SCHEDULES = ["Quarterly", "Monthly", "Semi-Weekly"];
 
 /**
  * Sales tax filing cadence.

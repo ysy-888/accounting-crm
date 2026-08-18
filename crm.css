@@ -4684,6 +4684,8 @@ span.dash-event { cursor: pointer; /* clicking selects the day */ }
 [data-group="payroll"][data-schedule="Semi-Monthly"] { --sched-bg: #e8eafb; --sched-fg: #38459c; --sched-strong: #4453bb; }
 [data-group="payroll"][data-schedule="Bi-Weekly"]    { --sched-bg: #dff0f8; --sched-fg: #10627f; --sched-strong: #14789c; }
 [data-group="payroll"][data-schedule="Semi-Weekly"]  { --sched-bg: #dfeaf7; --sched-fg: #27548c; --sched-strong: #3067ab; }
+/* Payroll's Quarterly, not sales tax's — a blue, and a distinct one. */
+[data-group="payroll"][data-schedule="Quarterly"]    { --sched-bg: #e2edf6; --sched-fg: #14507a; --sched-strong: #196394; }
 
 [data-group="salesTax"] {
   --sched-bg: #fbeedb;
