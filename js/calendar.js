@@ -8,7 +8,7 @@
 
 const CAL_MONTHS_BEFORE = 2;
 const CAL_MONTHS_AFTER = 12;
-const CAL_MAX_EVENTS = 3;
+const CAL_MAX_EVENTS = 5;
 
 /** The badge on a calendar chip — the cell is far too narrow for full labels. */
 const CAL_EVENT_SHORT_LABELS = {
@@ -78,6 +78,10 @@ function applyCalGroupSelection() {
   document.querySelectorAll("#calGrid .dash-event[data-task-id]").forEach(chip => {
     chip.classList.toggle("is-group-selected", calSelectedTaskIds.has(chip.dataset.taskId));
   });
+  // Re-flow every cell: a chip that just became selected has to surface out
+  // of the overflow, and one that just stopped being selected drops back in.
+  document.querySelectorAll("#calGrid .dash-cal-cell.has-events").forEach(applyCalCellOverflow);
+
   document.querySelectorAll(".payroll-run.is-selectable").forEach(card => {
     card.classList.toggle("is-selected", isCalGroupSelected(card.groupTaskIds ?? []));
   });
@@ -266,26 +270,56 @@ function buildCalCell(date, byDate, today) {
   }
   cell.appendChild(num);
 
+  // Every event is rendered; which ones actually show is decided by
+  // applyCalCellOverflow, so selecting a group can reveal one that was
+  // sitting inside "+N more" without rebuilding the grid.
   const events = byDate.get(cellYmd) ?? [];
-  const collapsed = events.length > CAL_MAX_EVENTS + 1;
-  events.forEach((event, i) => {
-    if (collapsed && i >= CAL_MAX_EVENTS) return;
-    cell.appendChild(createCalEventChip(event));
-  });
-
-  if (collapsed) {
-    const more = document.createElement("span");
-    more.className = "dash-cal-more";
-    more.textContent = `+${events.length - CAL_MAX_EVENTS} more`;
-    cell.appendChild(more);
-  }
+  events.forEach(event => cell.appendChild(createCalEventChip(event)));
 
   if (events.length > 0) {
+    const more = document.createElement("span");
+    more.className = "dash-cal-more";
+    more.hidden = true;
+    cell.appendChild(more);
+
     cell.classList.add("has-events");
     cell.addEventListener("click", () => selectCalDay(cellYmd));
+    applyCalCellOverflow(cell);
   }
 
   return cell;
+}
+
+/**
+ * Decide which of a cell's chips are visible.
+ *
+ * Selected chips are hoisted to the top and always shown, however many there
+ * are — a selected group that stayed buried in "+N more" was the whole point
+ * of highlighting it. The rest fill the remaining room up to CAL_MAX_EVENTS,
+ * and the counter only appears when it would hide more than one (hiding a
+ * single chip behind a "+1 more" of the same height saves nothing).
+ */
+function applyCalCellOverflow(cell) {
+  const chips = [...cell.querySelectorAll(".dash-event")];
+  if (chips.length === 0) return;
+
+  const isSelected = chip => calSelectedTaskIds.has(chip.dataset.taskId);
+  const selected = chips.filter(isSelected);
+  const cap = Math.max(CAL_MAX_EVENTS, selected.length);
+  const ordered = [...selected, ...chips.filter(chip => !isSelected(chip))];
+  const collapse = ordered.length > cap + 1;
+
+  ordered.forEach((chip, i) => {
+    chip.style.order = isSelected(chip) ? "-1" : "0";
+    chip.hidden = collapse && i >= cap;
+  });
+
+  const hidden = ordered.filter(chip => chip.hidden).length;
+  const more = cell.querySelector(".dash-cal-more");
+  if (more) {
+    more.hidden = hidden === 0;
+    more.textContent = `+${hidden} more`;
+  }
 }
 
 function sizeCalRows() {

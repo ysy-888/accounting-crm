@@ -4912,17 +4912,42 @@ span.dash-event { cursor: pointer; /* clicking selects the day */ }
 
 .payroll-run.is-selectable { cursor: pointer; }
 
-.payroll-run.is-selected {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent-light);
+/* Selection reads as a change of colour, not a ring drawn around things —
+   the card fills with a tint and its left edge deepens. */
+.payroll-run.is-selected,
+.payroll-run.is-selected.is-complete {
+  background: #eaf2fb;
+  border-color: #b9d5f0;
+  border-left-color: #1c72c4;
 }
 
-/* Every day the selected group touches, across the whole grid. */
-.dash-event.is-group-selected {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
-  font-weight: 600;
+/* Every day the selected group touches, across the whole grid: each chip
+   flips to a solid fill of its own family colour, so it stays obvious which
+   kind of task it is while clearly reading as picked. */
+.dash-event.is-group-selected { color: #fff; font-weight: 600; }
+.dash-event.is-group-selected .dash-event-icon { opacity: 1; }
+
+.dash-event.cal-event--paystub.is-group-selected {
+  background: #0d6ba8;
+  border-color: #0d6ba8;
 }
+
+.dash-event.cal-event--tax.is-group-selected {
+  background: #333f9c;
+  border-color: #333f9c;
+}
+
+.dash-event.cal-event--salesTax.is-group-selected {
+  background: #8a5310;
+  border-color: #8a5310;
+}
+
+/* A done chip is dimmed; selecting it should still read as selected. */
+.dash-event.is-group-selected.is-done { opacity: 0.75; }
+
+/* Chips hide via [hidden] now that the cell renders all of them. */
+.dash-event[hidden] { display: none !important; }
+.dash-cal-more[hidden] { display: none !important; }
 
 /* ============================================================
    Company detail — calendar and tasks as separate columns
