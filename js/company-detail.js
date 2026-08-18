@@ -15,7 +15,7 @@ function getCompanyInfoFields(company) {
     { label: "Company Name", value: company.name },
     { label: "Owner", value: getCompanyOwnerName(company) },
     { label: "Location", value: company.location },
-    { label: "Payroll", value: company.payroll },
+    { label: "Payroll", value: (company.payrollSchedules ?? []).join(", ") },
     { label: "Payroll Tax", value: company.payrollTax },
     { label: "Sales Tax", value: company.salesTax },
   ];
@@ -213,8 +213,9 @@ function initCompanyDetail() {
   document.addEventListener("keydown", e => {
     if (e.key !== "Escape") return;
     if (getCurrentAppView() !== "company") return;
-    // Let an open popover take Escape first.
+    // Let an open popover or modal take Escape first.
     if (!document.getElementById("columnFilterPopover")?.hidden) return;
+    if (typeof isCompanyFormOpen === "function" && isCompanyFormOpen()) return;
     closeCompanyDetail();
   });
 }

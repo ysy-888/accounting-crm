@@ -19,13 +19,31 @@ let companyCurrentPage = 1;
 
 // ── Column access ────────────────────────────────────────────────────────────
 
-/** Canonical accessor: column label → value on the company record. */
+/** Columns that hold a list rather than a single value. */
+const COMPANY_MULTI_VALUE_COLUMNS = new Set(["Payroll"]);
+
+function isCompanyMultiValueColumn(col) {
+  return COMPANY_MULTI_VALUE_COLUMNS.has(col);
+}
+
+/** Always an array — the uniform shape filters and rendering work against. */
+function getCompanyColumnValues(company, col) {
+  if (col === "Payroll") return company.payrollSchedules ?? [];
+  const single = getCompanyColumnValue(company, col);
+  return single ? [single] : [];
+}
+
+/**
+ * Canonical accessor: column label → a single string, for search and display.
+ * Multi-value columns collapse to a comma-joined list; use
+ * getCompanyColumnValues when the individual values matter.
+ */
 function getCompanyColumnValue(company, col) {
   switch (col) {
     case "Company":     return company.name;
     case "Owner":       return getCompanyOwnerName(company);
     case "Location":    return company.location;
-    case "Payroll":     return company.payroll;
+    case "Payroll":     return (company.payrollSchedules ?? []).join(", ");
     case "Payroll Tax": return company.payrollTax;
     case "Sales Tax":   return company.salesTax;
     default:            return "";
@@ -47,7 +65,9 @@ function getScheduleOptionsForColumn(col) {
 function compareCompaniesByColumn(col, a, b) {
   const options = getScheduleOptionsForColumn(col);
   if (options) {
-    return compareByOptionOrder(getCompanyColumnValue(a, col), getCompanyColumnValue(b, col), options);
+    // Multi-value columns sort on their earliest cadence.
+    const first = company => getCompanyColumnValues(company, col)[0] ?? "";
+    return compareByOptionOrder(first(a), first(b), options);
   }
   return compareTextFieldValues(getCompanyColumnValue(a, col), getCompanyColumnValue(b, col));
 }
@@ -248,18 +268,24 @@ function initCompaniesPagination() {
 
 // ── Render ───────────────────────────────────────────────────────────────────
 
-function renderScheduleCell(td, value) {
-  const s = String(value ?? "").trim();
-  if (!s) {
+function renderScheduleCell(td, values) {
+  const list = (Array.isArray(values) ? values : [values])
+    .map(v => String(v ?? "").trim())
+    .filter(Boolean);
+
+  if (list.length === 0) {
     setDisplayText(td, EMPTY_DISPLAY);
     return;
   }
-  const pill = document.createElement("span");
-  pill.className = "schedule-pill";
-  pill.dataset.schedule = s;
-  mountSearchHighlightedText(pill, s);
+
   td.classList.remove("empty-display");
-  td.replaceChildren(pill);
+  td.replaceChildren(...list.map(value => {
+    const pill = document.createElement("span");
+    pill.className = "schedule-pill";
+    pill.dataset.schedule = value;
+    mountSearchHighlightedText(pill, value);
+    return pill;
+  }));
 }
 
 function renderServicesCell(td, company) {
@@ -305,7 +331,7 @@ function renderCompaniesTable() {
       if (col === "Services") {
         renderServicesCell(td, company);
       } else if (getScheduleOptionsForColumn(col)) {
-        renderScheduleCell(td, getCompanyColumnValue(company, col));
+        renderScheduleCell(td, getCompanyColumnValues(company, col));
       } else {
         mountSearchHighlightedText(td, getCompanyColumnValue(company, col));
       }

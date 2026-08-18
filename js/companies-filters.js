@@ -59,11 +59,16 @@ function rowPassesCompanyServiceFilter(company) {
 
 // ── Column filters ───────────────────────────────────────────────────────────
 
-/** Value key used for grouping/matching — blanks collapse to one bucket. */
-function getCompanyFilterValueKey(col, company) {
-  const raw = getCompanyColumnValue(company, col);
-  const s = String(raw ?? "").trim();
-  return s === "" ? BLANK_FILTER_LABEL : s;
+/**
+ * Value keys a company contributes to a column's filter list. Single-value
+ * columns yield one; multi-value columns (Payroll) yield one per entry, so a
+ * company running two schedules appears under both.
+ */
+function getCompanyFilterValueKeys(col, company) {
+  const values = getCompanyColumnValues(company, col)
+    .map(v => String(v ?? "").trim())
+    .filter(Boolean);
+  return values.length === 0 ? [BLANK_FILTER_LABEL] : values;
 }
 
 function compareCompanyFilterValues(a, b, col) {
@@ -76,7 +81,9 @@ function compareCompanyFilterValues(a, b, col) {
 
 function getCompanyUniqueColumnValues(col) {
   const values = new Set();
-  getAllCompanies().forEach(company => values.add(getCompanyFilterValueKey(col, company)));
+  getAllCompanies().forEach(company => {
+    getCompanyFilterValueKeys(col, company).forEach(key => values.add(key));
+  });
   return [...values].sort((a, b) => compareCompanyFilterValues(a, b, col));
 }
 
@@ -108,7 +115,9 @@ function rowPassesCompanyColumnFilters(company) {
     const selected = companyColumnFilters[col];
     if (selected == null) continue;
     if (selected.size === 0) return false;
-    if (!selected.has(getCompanyFilterValueKey(col, company))) return false;
+    // A multi-value company matches if any one of its values is selected.
+    const keys = getCompanyFilterValueKeys(col, company);
+    if (!keys.some(key => selected.has(key))) return false;
   }
   return true;
 }

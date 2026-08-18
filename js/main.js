@@ -7,6 +7,7 @@ async function bootApp() {
   initHeaderMenu();
   initCompaniesView();
   initCompanyDetail();
+  initCompanyForm();
 
   try {
     await loadAppData();

@@ -25,6 +25,7 @@ npx http-server -c-1 .
 | `js/companies-filters.js` | Toolbar service filter + per-column filter popover |
 | `js/companies.js` | Companies table — search, sort, pagination, render |
 | `js/company-detail.js` | Full-page company detail with service toggles |
+| `js/company-form.js` | Add / edit company modal and the detail-page menu |
 | `js/main.js` | Boot |
 
 ## Data model
@@ -32,7 +33,8 @@ npx http-server -c-1 .
 ```
 Owner   { id, name, email, phone }
 Company { id, name, ownerId, location,
-          payroll, payrollTax, salesTax,
+          payrollSchedules: string[],
+          payrollTax, salesTax,
           services: { payroll, salesTax, bookkeeping, registration, reporting } }
 ```
 
@@ -40,8 +42,11 @@ One owner is assigned to many companies.
 
 Schedule options:
 
-- **Payroll** — Monthly, Bi-Monthly, Semi-Weekly
-- **Payroll Tax** — Monthly, Semi-Weekly
+- **Payroll** (multi-select — a company can run several at once)
+  - Monthly — pay date is the end of every month
+  - Semi-Monthly — the 15th and the end of every month
+  - Bi-Weekly — every other chosen weekday, anchored to a first pay date
+- **Payroll Tax** — Monthly (due the 15th of the following month), Semi-Weekly
 - **Sales Tax** — Quarterly, Y6, Y12
 
 ## The five service areas

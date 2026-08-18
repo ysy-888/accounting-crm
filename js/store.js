@@ -8,7 +8,8 @@
  * Shape:
  *   Owner   { id, name, email, phone }
  *   Company { id, name, ownerId, location,
- *             payroll, payrollTax, salesTax,     // "" when not applicable
+ *             payrollSchedules: string[],        // may hold more than one
+ *             payrollTax, salesTax,              // "" when not applicable
  *             services: { payroll, salesTax, bookkeeping, registration, reporting } }
  */
 
@@ -30,77 +31,77 @@ const SEED_OWNERS = [
 const SEED_COMPANIES = [
   {
     id: "co-1", name: "Aster Coffee Roasters", ownerId: "own-1", location: "Oakland, CA",
-    payroll: "Bi-Monthly", payrollTax: "Monthly", salesTax: "Quarterly",
+    payrollSchedules: ["Semi-Monthly", "Bi-Weekly"], payrollTax: "Monthly", salesTax: "Quarterly",
     services: { payroll: true, salesTax: true, bookkeeping: true, registration: true, reporting: true },
   },
   {
     id: "co-2", name: "Brightline Dental Group", ownerId: "own-2", location: "San Jose, CA",
-    payroll: "Semi-Weekly", payrollTax: "Semi-Weekly", salesTax: "",
+    payrollSchedules: ["Bi-Weekly"], payrollTax: "Semi-Weekly", salesTax: "",
     services: { payroll: true, salesTax: false, bookkeeping: true, registration: true, reporting: true },
   },
   {
     id: "co-3", name: "Cedar & Vine Interiors", ownerId: "own-1", location: "Berkeley, CA",
-    payroll: "Monthly", payrollTax: "Monthly", salesTax: "Y6",
+    payrollSchedules: ["Monthly"], payrollTax: "Monthly", salesTax: "Y6",
     services: { payroll: true, salesTax: true, bookkeeping: true, registration: false, reporting: false },
   },
   {
     id: "co-4", name: "Delta Freight Logistics", ownerId: "own-3", location: "Stockton, CA",
-    payroll: "Semi-Weekly", payrollTax: "Semi-Weekly", salesTax: "Quarterly",
+    payrollSchedules: ["Bi-Weekly"], payrollTax: "Semi-Weekly", salesTax: "Quarterly",
     services: { payroll: true, salesTax: true, bookkeeping: true, registration: true, reporting: true },
   },
   {
     id: "co-5", name: "Evergreen Landscaping", ownerId: "own-4", location: "Santa Rosa, CA",
-    payroll: "Bi-Monthly", payrollTax: "Monthly", salesTax: "Y12",
+    payrollSchedules: ["Semi-Monthly"], payrollTax: "Monthly", salesTax: "Y12",
     services: { payroll: true, salesTax: true, bookkeeping: false, registration: true, reporting: false },
   },
   {
     id: "co-6", name: "Fairmount Property Mgmt", ownerId: "own-2", location: "San Francisco, CA",
-    payroll: "Monthly", payrollTax: "Monthly", salesTax: "",
+    payrollSchedules: ["Monthly"], payrollTax: "Monthly", salesTax: "",
     services: { payroll: true, salesTax: false, bookkeeping: true, registration: true, reporting: false },
   },
   {
     id: "co-7", name: "Golden Gate Auto Body", ownerId: "own-3", location: "Daly City, CA",
-    payroll: "Bi-Monthly", payrollTax: "Semi-Weekly", salesTax: "Quarterly",
+    payrollSchedules: ["Semi-Monthly"], payrollTax: "Semi-Weekly", salesTax: "Quarterly",
     services: { payroll: true, salesTax: true, bookkeeping: true, registration: false, reporting: true },
   },
   {
     id: "co-8", name: "Harbor Point Consulting", ownerId: "own-1", location: "Sausalito, CA",
-    payroll: "Monthly", payrollTax: "Monthly", salesTax: "",
+    payrollSchedules: ["Monthly"], payrollTax: "Monthly", salesTax: "",
     services: { payroll: false, salesTax: false, bookkeeping: true, registration: true, reporting: false },
   },
   {
     id: "co-9", name: "Ironwood Construction", ownerId: "own-4", location: "Concord, CA",
-    payroll: "Semi-Weekly", payrollTax: "Semi-Weekly", salesTax: "Quarterly",
+    payrollSchedules: ["Monthly", "Bi-Weekly"], payrollTax: "Semi-Weekly", salesTax: "Quarterly",
     services: { payroll: true, salesTax: true, bookkeeping: true, registration: true, reporting: true },
   },
   {
     id: "co-10", name: "Juniper Bakery", ownerId: "own-2", location: "Alameda, CA",
-    payroll: "Bi-Monthly", payrollTax: "Monthly", salesTax: "Y6",
+    payrollSchedules: ["Semi-Monthly"], payrollTax: "Monthly", salesTax: "Y6",
     services: { payroll: true, salesTax: true, bookkeeping: true, registration: false, reporting: false },
   },
   {
     id: "co-11", name: "Kestrel Software Studio", ownerId: "own-3", location: "Palo Alto, CA",
-    payroll: "Bi-Monthly", payrollTax: "Semi-Weekly", salesTax: "",
+    payrollSchedules: ["Semi-Monthly"], payrollTax: "Semi-Weekly", salesTax: "",
     services: { payroll: true, salesTax: false, bookkeeping: true, registration: true, reporting: true },
   },
   {
     id: "co-12", name: "Lantern Hill Winery", ownerId: "own-4", location: "Napa, CA",
-    payroll: "Monthly", payrollTax: "Monthly", salesTax: "Y12",
+    payrollSchedules: ["Monthly"], payrollTax: "Monthly", salesTax: "Y12",
     services: { payroll: true, salesTax: true, bookkeeping: false, registration: true, reporting: false },
   },
   {
     id: "co-13", name: "Meridian Physical Therapy", ownerId: "own-1", location: "Walnut Creek, CA",
-    payroll: "Semi-Weekly", payrollTax: "Semi-Weekly", salesTax: "",
+    payrollSchedules: ["Bi-Weekly"], payrollTax: "Semi-Weekly", salesTax: "",
     services: { payroll: true, salesTax: false, bookkeeping: true, registration: true, reporting: true },
   },
   {
     id: "co-14", name: "Northgate Hardware", ownerId: "own-2", location: "Vallejo, CA",
-    payroll: "Bi-Monthly", payrollTax: "Monthly", salesTax: "Quarterly",
+    payrollSchedules: ["Semi-Monthly"], payrollTax: "Monthly", salesTax: "Quarterly",
     services: { payroll: true, salesTax: true, bookkeeping: true, registration: true, reporting: true },
   },
   {
     id: "co-15", name: "Orchard Lane Childcare", ownerId: "own-3", location: "Fremont, CA",
-    payroll: "Monthly", payrollTax: "Monthly", salesTax: "",
+    payrollSchedules: ["Monthly"], payrollTax: "Monthly", salesTax: "",
     services: { payroll: true, salesTax: false, bookkeeping: true, registration: false, reporting: false },
   },
 ];
@@ -115,13 +116,40 @@ function normalizeServices(raw) {
   return services;
 }
 
+/** Renamed when the payroll vocabulary moved to standard payroll terms. */
+const LEGACY_PAYROLL_SCHEDULE_NAMES = {
+  "Bi-Monthly": "Semi-Monthly",
+  "Semi-Weekly": "Bi-Weekly",
+};
+
+/**
+ * Accepts either the current array form or the original single-string
+ * `payroll` field, so data saved before payroll went multi-value still loads.
+ */
+function normalizePayrollSchedules(raw) {
+  const source = Array.isArray(raw?.payrollSchedules)
+    ? raw.payrollSchedules
+    : [raw?.payroll];
+
+  const seen = new Set();
+  source.forEach(value => {
+    const s = String(value ?? "").trim();
+    if (!s) return;
+    const canonical = LEGACY_PAYROLL_SCHEDULE_NAMES[s] ?? s;
+    if (PAYROLL_SCHEDULES.includes(canonical)) seen.add(canonical);
+  });
+
+  // Keep a stable cadence order rather than insertion order.
+  return PAYROLL_SCHEDULES.filter(s => seen.has(s));
+}
+
 function normalizeCompany(raw) {
   return {
     id: String(raw?.id ?? ""),
     name: String(raw?.name ?? "").trim(),
     ownerId: String(raw?.ownerId ?? ""),
     location: String(raw?.location ?? "").trim(),
-    payroll: String(raw?.payroll ?? "").trim(),
+    payrollSchedules: normalizePayrollSchedules(raw),
     payrollTax: String(raw?.payrollTax ?? "").trim(),
     salesTax: String(raw?.salesTax ?? "").trim(),
     services: normalizeServices(raw?.services),
@@ -210,6 +238,36 @@ function getCompanyOwnerName(company) {
 /** Companies assigned to an owner — one owner, many companies. */
 function getCompaniesForOwner(ownerId) {
   return allCompanies.filter(c => c.ownerId === String(ownerId));
+}
+
+/** Sequential id that won't collide with anything already stored. */
+function nextCompanyId() {
+  const used = new Set(allCompanies.map(c => c.id));
+  let n = allCompanies.length + 1;
+  while (used.has(`co-${n}`)) n += 1;
+  return `co-${n}`;
+}
+
+/**
+ * Create a company. Name is the only required field; everything else falls
+ * back to an empty value so a record can be started from very little.
+ */
+async function createCompany(fields) {
+  const name = String(fields?.name ?? "").trim();
+  if (!name) throw new Error("Company name is required.");
+
+  const company = normalizeCompany({ ...fields, id: nextCompanyId(), name });
+  allCompanies.push(company);
+  persistCompanies();
+  return company;
+}
+
+async function deleteCompany(id) {
+  const index = allCompanies.findIndex(c => c.id === String(id));
+  if (index === -1) throw new Error(`Company ${id} not found.`);
+  const [removed] = allCompanies.splice(index, 1);
+  persistCompanies();
+  return removed;
 }
 
 /** Merge `patch` into a company and persist. Returns the updated record. */

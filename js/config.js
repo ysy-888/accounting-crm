@@ -16,10 +16,22 @@ function scopedStorageKey(base) {
 
 // ── Domain vocabulary ────────────────────────────────────────────────────────
 
-/** Payroll processing cadence. */
-const PAYROLL_SCHEDULES = ["Monthly", "Bi-Monthly", "Semi-Weekly"];
+/**
+ * Payroll processing cadence. A company can run more than one at a time —
+ * e.g. monthly for salaried staff and bi-weekly for hourly — so this is a
+ * multi-select, not a single value.
+ *
+ *   Monthly      — pay date is the end of every month
+ *   Semi-Monthly — pay dates are the 15th and the end of every month
+ *   Bi-Weekly    — every other <weekday>, anchored to a chosen first pay date
+ */
+const PAYROLL_SCHEDULES = ["Monthly", "Semi-Monthly", "Bi-Weekly"];
 
-/** Payroll tax deposit cadence. */
+/**
+ * Payroll tax deposit cadence (IRS depositor status).
+ *   Monthly      — due the 15th of the following month
+ *   Semi-Weekly  — due relative to each pay date (see PAYROLL_TAX_RULES)
+ */
 const PAYROLL_TAX_SCHEDULES = ["Monthly", "Semi-Weekly"];
 
 /** Sales tax filing cadence. Y6 = every 6 months, Y12 = annual. */
