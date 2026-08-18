@@ -8,6 +8,7 @@ async function bootApp() {
   initCompaniesView();
   initCompanyDetail();
   initCompanyForm();
+  initCalendar();
 
   try {
     await loadAppData();

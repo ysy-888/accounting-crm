@@ -145,6 +145,12 @@ function renderCompanySectionPanel(company) {
 
   const service = currentSectionKey ? getServiceMeta(currentSectionKey) : null;
 
+  // Payroll is built; the rest still show the placeholder.
+  if (service?.key === "payroll" && typeof renderPayrollSection === "function") {
+    renderPayrollSection(company);
+    return;
+  }
+
   const wrap = document.createElement("div");
   wrap.className = "company-section-empty";
 

@@ -13,6 +13,7 @@
   <nav class="app-title-nav" role="tablist" aria-label="Main views">
     <button type="button" class="app-logo-text" id="navLogoDashboard" title="Dashboard">Practice CRM</button>
     <button type="button" class="app-title-tab is-active" id="navTabCompanies" role="tab" aria-selected="true">Companies</button>
+    <button type="button" class="app-title-tab" id="navTabCalendar" role="tab" aria-selected="false">Calendar</button>
     <button type="button" class="app-title-tab" id="navTabOwners" role="tab" aria-selected="false">Owners</button>
   </nav>
   <div class="header-right">
@@ -143,6 +144,37 @@
     </div>
   </div>
 
+  <!-- ── Calendar ────────────────────────────────────────────── -->
+  <div id="calendarWrap" class="dashboard-wrap" hidden>
+    <div class="dashboard-main">
+      <section class="dashboard-panel dashboard-calendar-panel">
+        <div class="dashboard-panel-header dashboard-cal-header">
+          <div class="dashboard-cal-legend">
+            <button type="button" class="btn" id="calFilterBtn" aria-haspopup="true" aria-expanded="false">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg>
+              Filter
+            </button>
+          </div>
+          <span class="dashboard-cal-title" id="calTitle">—</span>
+          <div class="dashboard-cal-nav">
+            <button type="button" class="btn btn-page" id="calPrev" title="Previous month" aria-label="Previous month">‹</button>
+            <button type="button" class="btn" id="calToday">Today</button>
+            <button type="button" class="btn btn-page" id="calNext" title="Next month" aria-label="Next month">›</button>
+          </div>
+        </div>
+        <div class="dashboard-cal" id="calGrid"></div>
+      </section>
+      <aside class="dashboard-panel dashboard-day-pane" id="calDayPane" hidden>
+        <div class="dashboard-panel-header">
+          <span class="dashboard-panel-title" id="calDayPaneTitle">—</span>
+          <span class="dashboard-panel-count" id="calDayPaneCount"></span>
+          <button type="button" class="btn-close dashboard-day-pane-close" id="calDayPaneClose" aria-label="Close day view">✕</button>
+        </div>
+        <div class="dashboard-panel-body" id="calDayPaneList"></div>
+      </aside>
+    </div>
+  </div>
+
   <!-- ── Owners (placeholder for the next build step) ────────── -->
   <div id="ownersView" class="company-detail" hidden>
     <div class="company-detail-inner">
@@ -200,6 +232,10 @@
     <button type="button" class="btn btn-primary column-filter-ok" id="columnFilterOk">OK</button>
     <button type="button" class="btn column-filter-cancel" id="columnFilterCancel">Cancel</button>
   </div>
+</div>
+
+<div id="calFilterPopover" class="column-filter-popover dash-cal-filter-popover" hidden>
+  <div class="column-filter-list" id="calFilterList"></div>
 </div>
 
 <!-- ── Company form (add / edit) ─────────────────────────────── -->
@@ -262,12 +298,16 @@
 
 <script src="js/config.js"></script>
 <script src="js/util.js"></script>
+<!-- Loaded before store.js — the seed data uses its date helpers. -->
+<script src="js/payroll-schedule.js"></script>
 <script src="js/store.js"></script>
 <script src="js/app-shell.js"></script>
 <script src="js/companies-filters.js"></script>
 <script src="js/companies.js"></script>
 <script src="js/company-detail.js"></script>
 <script src="js/company-form.js"></script>
+<script src="js/payroll.js"></script>
+<script src="js/calendar.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>

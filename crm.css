@@ -3204,3 +3204,912 @@ select.form-input {
   .company-form-card { width: 100%; }
   .company-form-body { grid-template-columns: 1fr; }
 }
+
+
+/* ============================================================
+   CRM — Calendar (ported from the PO App dashboard)
+   ============================================================ */
+
+/* ── Dashboard ── */
+button.app-logo-text {
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
+
+button.app-logo-text:hover { opacity: 0.72; }
+
+button.app-logo-text.is-active { cursor: default; opacity: 1; }
+
+.dashboard-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden; /* the page never scrolls; panels scroll internally */
+  padding: 14px 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dashboard-main {
+  position: relative; /* anchors the day pane overlay */
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.dashboard-calendar-panel {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.dashboard-side {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 0 0 320px;
+  max-width: 320px;
+  min-width: 0;
+  min-height: 0;
+}
+
+.dashboard-side .dashboard-panel { flex: 1 1 0; }
+
+/* Day pane floats above the layout instead of pushing it aside. */
+.dashboard-day-pane {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 320px;
+  z-index: 40;
+  background: var(--surface);
+  box-shadow: -10px 0 28px rgba(0, 0, 0, 0.12);
+}
+
+.dashboard-day-pane[hidden] { display: none !important; }
+
+.dashboard-day-pane-close {
+  margin-left: 4px;
+  flex-shrink: 0;
+}
+
+.dash-list-row.is-done { opacity: 0.55; }
+
+.dash-list-row.is-done .dash-row-id { text-decoration: line-through; }
+
+.dashboard-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.dashboard-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.dashboard-panel-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.dashboard-panel-count {
+  margin-left: auto;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--accent-light);
+  border-radius: 10px;
+  padding: 1px 8px;
+}
+
+.dashboard-panel-count:empty { display: none; }
+
+.dashboard-panel-body {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+/* Calendar */
+.dashboard-cal-header {
+  position: relative;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+/* Title sits dead-center of the header frame regardless of the side content. */
+.dashboard-cal-header .dashboard-cal-title {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.dashboard-cal {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden; /* scrolling lives on .dash-cal-scroll */
+}
+
+/* Continuous multi-month scroll viewport. */
+.dash-cal-scroll {
+  position: relative; /* offsetParent for month anchors */
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.dashboard-cal-title {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.dashboard-cal-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.dashboard-cal-legend {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+#dashCalFilterBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+#dashCalFilterBtn.is-filtered {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.dash-cal-filter-popover { min-width: 170px; }
+
+.dash-cal-filter-popover .column-filter-list { margin-bottom: 0; }
+
+.dash-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dash-cal-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  border-bottom: 1px solid var(--border);
+  background: var(--header-bg);
+}
+
+.dash-cal-head-cell {
+  padding: 5px 8px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--qty-total-fg);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Weekend columns read distinctly from weekdays. */
+.dash-cal-head-cell.is-weekend { color: var(--text-muted); }
+
+.dash-cal-body {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  grid-auto-rows: var(--dash-cal-row-h, 96px);
+}
+
+.dash-cal-cell {
+  position: relative;
+  padding: 4px;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  transition: background 0.12s ease;
+}
+
+.dash-cal-body .dash-cal-cell:nth-child(7n) { border-right: none; }
+
+/* Weekend days tint gently against white weekdays. */
+.dash-cal-cell.is-weekend { background: var(--bg); }
+
+/* Only days with events react to hover / selection. */
+.dash-cal-cell.has-events { cursor: pointer; }
+
+.dash-cal-cell.has-events:hover { background: var(--accent-light); }
+
+.dash-cal-cell.is-selected,
+.dash-cal-cell.is-selected.has-events:hover {
+  background: var(--accent-heavy);
+}
+
+/* A crisp accent outline reads cleaner than a full inset ring. */
+.dash-cal-cell.is-selected::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1.5px solid var(--accent);
+  border-radius: 3px;
+  pointer-events: none;
+}
+
+.dash-cal-date {
+  align-self: flex-start;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--qty-total-fg);
+  padding: 1px 5px;
+  border-radius: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.dash-cal-cell.is-month-start .dash-cal-date {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.dash-cal-cell.is-today {
+  background: var(--accent-light);
+  box-shadow: inset 0 2px 0 var(--accent);
+}
+
+.dash-cal-cell.is-today .dash-cal-date {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.dash-event {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+  border: none;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: var(--font);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+
+button.dash-event { cursor: pointer; }
+
+button.dash-event:hover { filter: brightness(0.9); }
+
+span.dash-event { cursor: pointer; /* clicking selects the day */ }
+
+.dash-event.is-done {
+  opacity: 0.45;
+  text-decoration: line-through;
+}
+
+.dash-event-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.dash-event-icon svg {
+  width: 10px;
+  height: 10px;
+  display: block;
+}
+
+.dash-event-title {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.dash-event-meta {
+  font-weight: 400;
+  opacity: 0.85;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Panel lists */
+.dash-list-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 16px;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.dash-list-row:last-child { border-bottom: none; }
+
+.dash-list-row:hover { background: var(--row-hover); }
+
+.dash-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+
+.dash-row-id {
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dash-row-sub {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dash-row-end {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  flex-shrink: 0;
+}
+
+.dash-row-date {
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.dash-row-date.is-overdue { color: var(--danger); font-weight: 600; }
+
+.dash-row-action {
+  flex-shrink: 0;
+  font-size: 11.5px;
+  padding: 3px 10px;
+}
+
+.dash-empty {
+  padding: 26px 16px;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.dashboard-wrap { overflow-y: auto; }
+
+.dashboard-main { flex-direction: column; }
+
+.dashboard-calendar-panel { min-height: 520px; }
+
+.dashboard-side { flex: none; max-width: none; }
+
+.dashboard-side .dashboard-panel-body { max-height: 320px; }
+
+/* Stacked layout is tall — pin the pane to the window instead. */
+  .dashboard-day-pane {
+    position: fixed;
+    top: 56px;
+    width: min(320px, 88vw);
+    z-index: 200;
+  }
+
+.dash-cal-more {
+  align-self: flex-start;
+  padding: 1px 5px;
+  font-family: var(--font);
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  border-radius: 4px;
+}
+
+.dash-cal-cell:hover .dash-cal-more { color: var(--text); }
+
+.dashboard-wrap[hidden] { display: none !important; }
+
+/* Status badge in the shipment/ASN modal headers */
+#shipmentModalStatusBadge,
+#asnRequestStatusBadge {
+  flex-shrink: 0;
+}
+
+/* Light, unobtrusive scrollbars — applied app-wide (tables, settings, modals)
+   to match the dashboard's design. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #d4d9df transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: #e5e7eb;
+  border-radius: 8px;
+  border: 3px solid var(--surface);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: #cbd0d6;
+}
+
+/* ============================================================
+   CRM — Payroll section
+   ============================================================ */
+
+.payroll-section { display: flex; flex-direction: column; gap: 8px; }
+
+.payroll-depositor {
+  padding: 9px 13px;
+  background: var(--accent-light);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-family: var(--font);
+  font-size: 12px;
+  color: var(--text);
+  margin-bottom: 14px;
+}
+
+.payroll-depositor.is-warning {
+  background: var(--danger-tint);
+  border-color: #f0c8c8;
+  color: #8a2020;
+}
+
+.payroll-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.payroll-group {
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 13px 15px;
+  background: var(--surface);
+}
+
+.payroll-group.is-on { border-color: var(--border-strong); }
+
+.payroll-group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.payroll-group-name {
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+
+.payroll-group:not(.is-on) .payroll-group-name { color: var(--text-muted); }
+
+.payroll-group-desc,
+.payroll-group-note {
+  font-family: var(--font);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.payroll-group-note { margin-top: 8px; font-style: italic; }
+
+/* Bi-weekly anchor */
+.payroll-anchor-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  padding: 11px 13px;
+  background: var(--bg);
+  border-radius: 7px;
+}
+
+.payroll-anchor-row.is-unset {
+  background: #fdf6e8;
+  border: 1px solid #ecdcc0;
+}
+
+.payroll-anchor-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-family: var(--font);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.payroll-anchor-input { width: 160px; }
+
+.payroll-anchor-hint {
+  font-family: var(--font);
+  font-size: 11px;
+  color: var(--text-muted);
+  padding-bottom: 7px;
+}
+
+/* Employees */
+.payroll-employees {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.payroll-employees-head { margin-bottom: 7px; }
+
+.payroll-employees-title {
+  font-family: var(--font);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.payroll-employees-empty {
+  font-family: var(--font);
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 8px 0;
+}
+
+.payroll-employee-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-bottom: 9px;
+}
+
+.payroll-employee {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 9px;
+  background: var(--bg);
+  border-radius: 6px;
+}
+
+.payroll-employee-name {
+  font-family: var(--font);
+  font-size: 13px;
+  color: var(--text);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.payroll-employee-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 0 auto;
+}
+
+.payroll-employee-move {
+  appearance: none;
+  padding: 3px 22px 3px 8px;
+  background: var(--surface) var(--icon-caret-down) no-repeat right 6px center;
+  background-size: 12px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  font-family: var(--font);
+  font-size: 11px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.payroll-employee-move:hover { border-color: var(--border-strong); color: var(--text); }
+
+.payroll-employee-remove {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 5px;
+  font-size: 11px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.payroll-employee-remove:hover { background: var(--danger-tint); color: var(--danger); }
+
+.payroll-add-employee { display: flex; gap: 6px; }
+.payroll-add-employee .form-input { flex: 1; min-width: 0; }
+
+/* Upcoming runs */
+.payroll-run-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.payroll-run {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 11px 14px;
+  background: var(--surface);
+}
+
+.payroll-run-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+  margin-bottom: 9px;
+}
+
+.payroll-run-date {
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.payroll-run-count {
+  font-family: var(--font);
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-left: auto;
+}
+
+.payroll-run-tasks {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Task checkbox */
+.payroll-task {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px 7px 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  cursor: pointer;
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.payroll-task:hover { border-color: var(--border-strong); }
+
+.payroll-task input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.payroll-task-box {
+  flex: 0 0 auto;
+  width: 15px;
+  height: 15px;
+  border: 1.5px solid var(--border-strong);
+  border-radius: 4px;
+  background: var(--surface);
+  position: relative;
+}
+
+.payroll-task input:checked + .payroll-task-box {
+  background: var(--success);
+  border-color: var(--success);
+}
+
+.payroll-task input:checked + .payroll-task-box::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 1px;
+  width: 4px;
+  height: 8px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.payroll-task input:focus-visible + .payroll-task-box {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.payroll-task-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.payroll-task-name {
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.payroll-task-due {
+  font-family: var(--font);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.payroll-task-due.is-moved {
+  color: #854f0b;
+  border-bottom: 1px dotted #c9a25f;
+  align-self: flex-start;
+  cursor: help;
+}
+
+.payroll-task.is-done { background: #f2f7f2; border-color: #cfe3cf; }
+.payroll-task.is-done .payroll-task-name {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+/* ============================================================
+   CRM — Calendar specifics
+   ============================================================ */
+
+.dash-event.cal-event--paystub {
+  background: #e6f1fb;
+  color: #185fa5;
+  border-color: #cfe2f4;
+}
+
+.dash-event.cal-event--tax {
+  background: #faeeda;
+  color: #854f0b;
+  border-color: #ecdcc0;
+}
+
+.dash-event.is-done {
+  opacity: 0.5;
+  text-decoration: line-through;
+}
+
+.cal-filter-sep {
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+  padding-top: 6px;
+}
+
+/* Day pane task rows */
+.cal-day-task {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 9px 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.cal-day-task:last-child { border-bottom: none; }
+
+.cal-day-task-check {
+  margin-top: 2px;
+  flex: 0 0 auto;
+  cursor: pointer;
+}
+
+.cal-day-task-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.cal-day-task-company {
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.cal-day-task-company:hover { text-decoration: underline; }
+
+.cal-day-task-sub {
+  font-family: var(--font);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.cal-day-task.is-done .cal-day-task-company {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+.cal-day-task-flag {
+  flex: 0 0 auto;
+  align-self: center;
+  padding: 1px 7px;
+  border-radius: 9px;
+  background: #faeeda;
+  color: #854f0b;
+  font-family: var(--font);
+  font-size: 10px;
+  font-weight: 600;
+  cursor: help;
+}
+
+/* The calendar owns the full main area. */
+.dashboard-wrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 16px 16px;
+  overflow: hidden;
+}

@@ -6,7 +6,7 @@
  * (toolbar, footer pagination) hides with it.
  */
 
-const APP_VIEWS = ["companies", "company", "owners"];
+const APP_VIEWS = ["companies", "company", "calendar", "owners"];
 
 let currentAppView = "companies";
 
@@ -22,36 +22,39 @@ function switchAppView(view) {
   if (!APP_VIEWS.includes(view)) return;
   currentAppView = view;
 
-  const companiesToolbar = document.getElementById("companiesToolbar");
-  const companiesWrap = document.getElementById("companiesTableWrap");
-  const companyDetail = document.getElementById("companyDetailView");
-  const ownersView = document.getElementById("ownersView");
-  const footerEnd = document.getElementById("appFooterEnd");
-
-  if (companiesToolbar) companiesToolbar.hidden = view !== "companies";
-  if (companiesWrap) companiesWrap.hidden = view !== "companies";
-  if (companyDetail) companyDetail.hidden = view !== "company";
-  if (ownersView) ownersView.hidden = view !== "owners";
-  // Pagination belongs to the list only.
-  if (footerEnd) footerEnd.hidden = view !== "companies";
+  const panes = {
+    companiesToolbar: view === "companies",
+    companiesTableWrap: view === "companies",
+    companyDetailView: view === "company",
+    calendarWrap: view === "calendar",
+    ownersView: view === "owners",
+    // Pagination belongs to the list only.
+    appFooterEnd: view === "companies",
+  };
+  Object.entries(panes).forEach(([id, visible]) => {
+    const el = document.getElementById(id);
+    if (el) el.hidden = !visible;
+  });
 
   // The Companies tab stays selected while a company detail page is open —
   // the detail is a drill-down within that section.
-  const companiesTab = document.getElementById("navTabCompanies");
-  const ownersTab = document.getElementById("navTabOwners");
-  const companiesActive = view === "companies" || view === "company";
-  if (companiesTab) {
-    companiesTab.classList.toggle("is-active", companiesActive);
-    companiesTab.setAttribute("aria-selected", companiesActive ? "true" : "false");
-  }
-  if (ownersTab) {
-    ownersTab.classList.toggle("is-active", view === "owners");
-    ownersTab.setAttribute("aria-selected", view === "owners" ? "true" : "false");
-  }
+  const tabs = {
+    navTabCompanies: view === "companies" || view === "company",
+    navTabCalendar: view === "calendar",
+    navTabOwners: view === "owners",
+  };
+  Object.entries(tabs).forEach(([id, active]) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.toggle("is-active", active);
+    el.setAttribute("aria-selected", active ? "true" : "false");
+  });
 
   if (view === "companies" && typeof updateCompaniesPaginationUI === "function") {
     updateCompaniesPaginationUI();
   }
+  // The grid needs real layout to size its rows, so render on entry.
+  if (view === "calendar" && typeof renderCalendar === "function") renderCalendar();
 }
 
 // ── Header menu ──────────────────────────────────────────────────────────────
@@ -149,6 +152,7 @@ function exportCompaniesCsv() {
 
 function initAppNav() {
   document.getElementById("navTabCompanies")?.addEventListener("click", () => switchAppView("companies"));
+  document.getElementById("navTabCalendar")?.addEventListener("click", () => switchAppView("calendar"));
   document.getElementById("navTabOwners")?.addEventListener("click", () => switchAppView("owners"));
   document.getElementById("navLogoDashboard")?.addEventListener("click", () => switchAppView("companies"));
 
