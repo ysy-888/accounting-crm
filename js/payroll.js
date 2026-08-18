@@ -561,6 +561,21 @@ function appendCardCompanyName(card, company) {
   card.appendChild(name);
 }
 
+/**
+ * The heading date for a payroll card.
+ *
+ * A monthly run is the month's payroll, so the month names it better than
+ * any one date does. Semi-monthly and bi-weekly cards have no single date
+ * worth hoisting — the runs inside them each carry their own — so they get
+ * no heading date at all and let the sub-tasks speak.
+ */
+function payrollCardHeading(schedules, payDate) {
+  const unique = [...new Set(schedules)];
+  if (unique.length !== 1 || unique[0] !== "Monthly") return "";
+  const parsed = parseYmd(payDate);
+  return parsed ? parsed.toLocaleString(undefined, { month: "short", year: "numeric" }) : "";
+}
+
 /** Default refresh: whatever view the card is sitting in. */
 function defaultCardRefresh(companyId) {
   return () => {
@@ -580,9 +595,7 @@ function createPayrollRunCard(company, run, { showCompany = false, onChange } = 
   const head = document.createElement("div");
   head.className = "payroll-run-head";
 
-  const date = document.createElement("span");
-  date.className = "payroll-run-date";
-  date.textContent = formatTaskDateShort(run.paystub.dueDate);
+  const heading = payrollCardHeading([run.schedule], run.payDate);
 
   const pill = document.createElement("span");
   pill.className = "schedule-pill";
@@ -594,7 +607,13 @@ function createPayrollRunCard(company, run, { showCompany = false, onChange } = 
   count.className = "payroll-run-count";
   count.textContent = `${run.paystub.employeeCount} employee${run.paystub.employeeCount === 1 ? "" : "s"}`;
 
-  head.append(date, pill, count);
+  if (heading) {
+    const date = document.createElement("span");
+    date.className = "payroll-run-date";
+    date.textContent = heading;
+    head.appendChild(date);
+  }
+  head.append(pill, count);
 
   if (complete) {
     const badge = document.createElement("span");
@@ -654,9 +673,9 @@ function createBatchedRunCard(company, group, { showCompany = false, onChange } 
   const head = document.createElement("div");
   head.className = "payroll-run-head";
 
-  const date = document.createElement("span");
-  date.className = "payroll-run-date";
-  date.textContent = formatTaskDateShort(group.tax.dueDate);
+  // The deposit's own date is already on its sub-task row below, so the
+  // heading names the period instead — or stays out of the way entirely.
+  const heading = payrollCardHeading(group.runs.map(r => r.schedule), group.runs[0].payDate);
 
   const pill = document.createElement("span");
   pill.className = "schedule-pill";
@@ -668,7 +687,13 @@ function createBatchedRunCard(company, group, { showCompany = false, onChange } 
   count.className = "payroll-run-count";
   count.textContent = `${group.runs.length} runs`;
 
-  head.append(date, pill, count);
+  if (heading) {
+    const date = document.createElement("span");
+    date.className = "payroll-run-date";
+    date.textContent = heading;
+    head.appendChild(date);
+  }
+  head.append(pill, count);
 
   if (complete) {
     const badge = document.createElement("span");

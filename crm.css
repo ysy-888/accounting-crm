@@ -3349,12 +3349,12 @@ button.app-logo-text.is-active { cursor: default; opacity: 1; }
 }
 
 .dash-cal-head-cell {
-  padding: 5px 8px;
-  font-size: 10.5px;
-  font-weight: 600;
-  color: var(--qty-total-fg);
+  padding: 6px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
 }
 
 /* Weekend columns read distinctly from weekdays. */
@@ -3407,9 +3407,12 @@ button.app-logo-text.is-active { cursor: default; opacity: 1; }
 
 .dash-cal-date {
   align-self: flex-start;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--qty-total-fg);
+  /* Chips are ordered by index from 0, so a large negative keeps the date
+     pinned to the top of the cell no matter what is selected. */
+  order: -1000;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text);
   padding: 1px 5px;
   border-radius: 11px;
   font-variant-numeric: tabular-nums;
@@ -3581,6 +3584,8 @@ span.dash-event { cursor: pointer; /* clicking selects the day */ }
 
 .dash-cal-more {
   align-self: flex-start;
+  /* Past every chip's index, so the counter always closes the cell. */
+  order: 1000;
   padding: 1px 5px;
   font-family: var(--font);
   font-size: 10.5px;

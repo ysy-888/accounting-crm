@@ -291,26 +291,37 @@ function buildCalCell(date, byDate, today) {
 }
 
 /**
- * Decide which of a cell's chips are visible.
+ * Order a cell's chips and decide which are visible.
  *
- * Selected chips are hoisted to the top and always shown, however many there
- * are — a selected group that stayed buried in "+N more" was the whole point
- * of highlighting it. The rest fill the remaining room up to CAL_MAX_EVENTS,
- * and the counter only appears when it would hide more than one (hiding a
- * single chip behind a "+1 more" of the same height saves nothing).
+ * Sort order, best first: selected before unselected, and within each,
+ * still-open before done — so what needs doing rises and finished work
+ * settles at the bottom. The date keeps its own CSS order so chips can never
+ * climb above it.
+ *
+ * Selected chips are always shown, however many there are: a selected group
+ * left buried in "+N more" defeats the point of highlighting it. The rest
+ * fill the remaining room up to CAL_MAX_EVENTS, and the counter only appears
+ * when it would hide more than one — swapping a single chip for a "+1 more"
+ * of the same height saves nothing.
  */
 function applyCalCellOverflow(cell) {
   const chips = [...cell.querySelectorAll(".dash-event")];
   if (chips.length === 0) return;
 
   const isSelected = chip => calSelectedTaskIds.has(chip.dataset.taskId);
-  const selected = chips.filter(isSelected);
-  const cap = Math.max(CAL_MAX_EVENTS, selected.length);
-  const ordered = [...selected, ...chips.filter(chip => !isSelected(chip))];
+  const rank = chip => (isSelected(chip) ? 0 : 2) + (chip.classList.contains("is-done") ? 1 : 0);
+
+  // Stable sort, so same-rank chips keep the order the day produced them in.
+  const ordered = chips
+    .map((chip, i) => ({ chip, i, rank: rank(chip) }))
+    .sort((a, b) => a.rank - b.rank || a.i - b.i)
+    .map(entry => entry.chip);
+
+  const cap = Math.max(CAL_MAX_EVENTS, chips.filter(isSelected).length);
   const collapse = ordered.length > cap + 1;
 
   ordered.forEach((chip, i) => {
-    chip.style.order = isSelected(chip) ? "-1" : "0";
+    chip.style.order = String(i);
     chip.hidden = collapse && i >= cap;
   });
 
