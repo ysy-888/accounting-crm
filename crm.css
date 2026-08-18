@@ -4845,41 +4845,8 @@ span.dash-event { cursor: pointer; /* clicking selects the day */ }
 }
 
 /* ============================================================
-   Service state — inactive sections, and unconfigured settings
+   Service state — unconfigured settings
    ============================================================ */
-
-/* An inactive service keeps its tab so its saved setup stays reachable. */
-.company-section-tab.is-inactive { opacity: 0.5; }
-.company-section-tab.is-inactive:hover { opacity: 0.75; }
-
-.company-section-tab.is-inactive.is-active { opacity: 0.85; }
-.company-section-tab.is-inactive.is-active::after { background: var(--text-muted); }
-
-.service-inactive-banner {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  margin-bottom: 16px;
-  padding: 9px 13px;
-  background: var(--bg);
-  border: 1px solid var(--border-strong);
-  border-radius: 8px;
-  font-family: var(--font);
-  font-size: 12px;
-  color: var(--text-muted);
-}
-
-.service-inactive-badge {
-  flex: 0 0 auto;
-  padding: 1px 8px;
-  border-radius: 9px;
-  background: var(--text-muted);
-  color: #fff;
-  font-size: 10.5px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
 
 /* A switched-on service whose schedule is still unset blocks the save. */
 .service-block-row.is-invalid {
