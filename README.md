@@ -12,6 +12,21 @@ Static site, no build step. Serve the folder and open it:
 npx http-server -c-1 .
 ```
 
+## Backend setup (one time)
+
+Data lives in Supabase (Postgres + auth), gated behind a login — see
+`supabase-schema.sql` for the full walkthrough. Short version:
+
+1. Create a free project at [supabase.com](https://supabase.com).
+2. Project → SQL Editor → paste `supabase-schema.sql` → Run.
+3. Authentication → Users → Add user (your one login; check "Auto Confirm
+   User").
+4. Project Settings → API → copy the **Project URL** and **anon public key**
+   into `SUPABASE_URL` / `SUPABASE_ANON_KEY` at the top of `js/config.js`.
+
+Until those two values are filled in, the app shows a "Supabase isn't
+configured" message instead of the login screen.
+
 ## Before committing js/ or crm.css changes
 
 ```bash
@@ -32,7 +47,8 @@ index.html so the URLs change on every deploy.
 | `crm.css` | Design system carried over from the PO App, plus CRM-specific sections at the bottom |
 | `js/config.js` | Domain vocabulary — schedule options, the five service areas |
 | `js/util.js` | Display, sort-compare, search-highlight, and status-message helpers |
-| `js/store.js` | Data layer (localStorage) |
+| `js/auth.js` | Supabase client + the login screen |
+| `js/store.js` | Data layer (Supabase) |
 | `js/app-shell.js` | View switching, header menu, CSV export |
 | `js/companies-filters.js` | Toolbar service filter + per-column filter popover |
 | `js/companies.js` | Companies table — search, sort, pagination, render |
@@ -79,13 +95,17 @@ company detail page.
 
 ## Storage
 
-`js/store.js` is the only file that knows where data lives. It currently uses
-`localStorage` (keys under `practiceCrm.*`), starting empty on first run.
-Every function is `async` and returns plain objects, so moving to a
-Supabase-backed Express API is a change to that one file.
+`js/store.js` is the only file that knows where data lives — three Supabase
+tables (`owners`, `companies`, `completed_tasks`), each scoped to the
+signed-in user by Row Level Security (see `supabase-schema.sql`). Every
+function is `async`; the rest of the app reads through synchronous getters
+(`getAllCompanies`, `getCompanyById`, …) served from an in-memory cache kept
+in sync with the database, so nothing else awaits a network round trip just
+to render.
 
 *Clear all data* in the header menu permanently wipes every company, owner,
-and completed task.
+and completed task. *Sign out* ends the session and returns to the login
+screen.
 
 ## Payroll
 
@@ -133,7 +153,6 @@ to backfill.
 
 ## Not built yet
 
-- Owners page (owners exist in the data layer and drive the Owner column/filter)
-- Sales Tax, Bookkeeping, Registration, and Reporting section bodies
+- Bookkeeping, Registration, and Reporting section bodies
 - Federal holiday handling
 - Email functionality (to be carried over from the PO App Apps Script relay)

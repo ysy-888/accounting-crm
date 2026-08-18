@@ -102,6 +102,13 @@ function initHeaderMenu() {
     setAppLoading(false);
     showIndicator("All data cleared", "success");
   });
+
+  document.getElementById("headerMenuSignOut")?.addEventListener("click", async () => {
+    closeHeaderMenu();
+    // The auth listener in main.js reloads the page once the sign-out
+    // actually lands, so there's nothing else to unwind here.
+    await signOut();
+  });
 }
 
 // ── CSV export ───────────────────────────────────────────────────────────────

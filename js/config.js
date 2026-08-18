@@ -1,18 +1,27 @@
 /**
  * App-wide constants and small shared helpers.
  *
- * The data layer is currently local (see js/store.js). When this moves to a
- * Supabase-backed Express API, only store.js changes — everything else calls
- * through it.
+ * The data layer (js/store.js) talks to Supabase; everything else calls
+ * through it and knows nothing about where the data actually lives.
  */
 
 const APP_NAME = "Practice CRM";
 const STORAGE_PREFIX = "practiceCrm";
 
-/** localStorage key namespaced to this app. */
+/** localStorage key namespaced to this app — used only for small UI prefs now. */
 function scopedStorageKey(base) {
   return `${STORAGE_PREFIX}.${base}`;
 }
+
+// ── Supabase ─────────────────────────────────────────────────────────────────
+//
+// The anon key is a public key by design — it grants nothing on its own.
+// Row Level Security on every table requires a valid signed-in session before
+// any row is readable or writable, so it's safe for this to sit in the
+// browser's JS. Get both values from your Supabase project:
+// Project Settings → API. See supabase-schema.sql for the one-time setup.
+const SUPABASE_URL = "https://ftwtcusefoddajqlnamc.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ0d3RjdXNlZm9kZGFqcWxuYW1jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcwNzI1ODIsImV4cCI6MjEwMjY0ODU4Mn0.AVw4k4R6-ApFbWKC8J5pIK7MexbLo1sHpknbGou7aDI";
 
 // ── Domain vocabulary ────────────────────────────────────────────────────────
 

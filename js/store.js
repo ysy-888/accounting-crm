@@ -1,9 +1,11 @@
 /**
  * Data layer.
  *
- * Backed by localStorage for now. Every function here is async and returns
- * plain objects, so swapping in a Supabase-backed Express API later is a
- * change to this file only.
+ * Backed by Supabase (see js/auth.js for the client). Every function here is
+ * async and returns plain objects; everything else in the app reads through
+ * the synchronous getters below (getAllCompanies, getCompanyById, …), which
+ * serve from an in-memory cache kept in sync with the database — so the rest
+ * of the app never awaits a network round trip just to render.
  *
  * Shape:
  *   Owner   { id, name, email, phone }
@@ -12,9 +14,6 @@
  *             payrollTax, salesTax,              // "" when not applicable
  *             services: { payroll, salesTax, bookkeeping, registration, reporting } }
  */
-
-const OWNERS_STORAGE_KEY = scopedStorageKey("owners");
-const COMPANIES_STORAGE_KEY = scopedStorageKey("companies");
 
 let allOwners = [];
 let allCompanies = [];
@@ -149,55 +148,101 @@ function normalizeOwner(raw) {
   };
 }
 
-// ── Persistence ──────────────────────────────────────────────────────────────
+// ── Supabase row mapping ─────────────────────────────────────────────────────
+//
+// The DB is snake_case with the nested payroll structure as one JSON column;
+// everything above this line works in the app's camelCase shape. These are
+// the only two places that translate between them.
 
-function readStorage(key) {
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : null;
-  } catch {
-    return null;
-  }
+function ownerRowToInput(row) {
+  return { id: row.id, name: row.name, email: row.email, phone: row.phone };
 }
 
-function writeStorage(key, value) {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    // Quota or private-mode failure — the in-memory copy stays authoritative
-    // for this session.
-  }
+function ownerToRow(owner) {
+  return { id: owner.id, name: owner.name, email: owner.email, phone: owner.phone };
 }
 
-function persistCompanies() {
-  writeStorage(COMPANIES_STORAGE_KEY, allCompanies);
+function companyRowToInput(row) {
+  return {
+    id: row.id,
+    name: row.name,
+    ownerId: row.owner_id ?? "",
+    location: row.location,
+    state: row.state,
+    payrollGroups: row.payroll_groups,
+    payrollTax: row.payroll_tax,
+    salesTax: row.sales_tax,
+    services: row.services,
+    notes: row.notes,
+  };
 }
 
-function persistOwners() {
-  writeStorage(OWNERS_STORAGE_KEY, allOwners);
+function companyToRow(company) {
+  return {
+    id: company.id,
+    name: company.name,
+    // "" means unassigned in the app; the FK column needs null instead.
+    owner_id: company.ownerId || null,
+    location: company.location,
+    state: company.state,
+    payroll_groups: company.payrollGroups,
+    payroll_tax: company.payrollTax,
+    sales_tax: company.salesTax,
+    services: company.services,
+    notes: company.notes,
+  };
+}
+
+function requireClient() {
+  if (!supabaseClient) throw new Error("Supabase isn't configured — set SUPABASE_URL and SUPABASE_ANON_KEY in js/config.js.");
+  return supabaseClient;
+}
+
+function throwIfError({ error }) {
+  if (error) throw new Error(error.message);
+}
+
+/** Upsert one company row. Awaited by every mutator below before touching the cache. */
+async function persistCompany(company) {
+  throwIfError(await requireClient().from("companies").upsert(companyToRow(company)));
+}
+
+async function persistOwner(owner) {
+  throwIfError(await requireClient().from("owners").upsert(ownerToRow(owner)));
 }
 
 // ── Public API ───────────────────────────────────────────────────────────────
 
-/** Load owners and companies, seeding demo data on first run. */
+/** Load every row Row Level Security lets the signed-in user see. */
 async function loadAppData() {
-  const storedOwners = readStorage(OWNERS_STORAGE_KEY);
-  const storedCompanies = readStorage(COMPANIES_STORAGE_KEY);
+  const client = requireClient();
+  const [ownersRes, companiesRes, tasksRes] = await Promise.all([
+    client.from("owners").select("*"),
+    client.from("companies").select("*"),
+    client.from("completed_tasks").select("task_id"),
+  ]);
+  throwIfError(ownersRes);
+  throwIfError(companiesRes);
+  throwIfError(tasksRes);
 
-  allOwners = (storedOwners ?? []).map(normalizeOwner);
-  allCompanies = (storedCompanies ?? []).map(normalizeCompany);
-  loadCompletedTasks();
+  allOwners = ownersRes.data.map(row => normalizeOwner(ownerRowToInput(row)));
+  allCompanies = companiesRes.data.map(row => normalizeCompany(companyRowToInput(row)));
+  completedTaskIds = new Set(tasksRes.data.map(row => row.task_id));
 
   return { owners: allOwners, companies: allCompanies };
 }
 
 /** Wipe every company, owner, and completed task. Cannot be undone. */
 async function clearAllData() {
-  writeStorage(OWNERS_STORAGE_KEY, []);
-  writeStorage(COMPANIES_STORAGE_KEY, []);
-  writeStorage(TASKS_STORAGE_KEY, []);
+  const client = requireClient();
+  // Every id is non-empty, so "not equal to empty string" reaches every row
+  // RLS lets this user see — Supabase requires an explicit filter on delete.
+  const results = await Promise.all([
+    client.from("companies").delete().neq("id", ""),
+    client.from("owners").delete().neq("id", ""),
+    client.from("completed_tasks").delete().neq("task_id", ""),
+  ]);
+  results.forEach(throwIfError);
   return loadAppData();
 }
 
@@ -251,8 +296,8 @@ async function createOwner(fields) {
   if (existing) return existing;
 
   const owner = normalizeOwner({ ...fields, id: nextOwnerId(), name });
+  await persistOwner(owner);
   allOwners.push(owner);
-  persistOwners();
   return owner;
 }
 
@@ -293,7 +338,7 @@ async function setPayrollGroupAnchor(companyId, schedule, anchorDate) {
 
   group.anchorDate = anchorDate;
   group.weekday = parsed.getDay();
-  persistCompanies();
+  await persistCompany(company);
   return group;
 }
 
@@ -307,7 +352,7 @@ async function addEmployee(companyId, schedule, name) {
 
   const employee = { id: `emp-${Date.now()}-${group.employees.length}`, name: trimmed };
   group.employees.push(employee);
-  persistCompanies();
+  await persistCompany(company);
   return employee;
 }
 
@@ -319,7 +364,7 @@ async function removeEmployee(companyId, schedule, employeeId) {
   const index = group.employees.findIndex(e => e.id === employeeId);
   if (index === -1) return null;
   const [removed] = group.employees.splice(index, 1);
-  persistCompanies();
+  await persistCompany(company);
   return removed;
 }
 
@@ -339,27 +384,17 @@ async function moveEmployee(companyId, fromSchedule, toSchedule, employeeId) {
     to.enabled = true;
     company.payrollSchedules = company.payrollGroups.filter(g => g.enabled).map(g => g.schedule);
   }
-  persistCompanies();
+  await persistCompany(company);
   return employee;
 }
 
 // ── Task completion ──────────────────────────────────────────────────────────
-
-const TASKS_STORAGE_KEY = scopedStorageKey("completedTasks");
 
 /**
  * Only completion is stored — the tasks themselves are always regenerated from
  * the schedules, so there is no calendar to backfill or migrate.
  */
 let completedTaskIds = new Set();
-
-function loadCompletedTasks() {
-  completedTaskIds = new Set(readStorage(TASKS_STORAGE_KEY) ?? []);
-}
-
-function persistCompletedTasks() {
-  writeStorage(TASKS_STORAGE_KEY, [...completedTaskIds]);
-}
 
 function isTaskComplete(taskId) {
   return completedTaskIds.has(taskId);
@@ -370,7 +405,7 @@ function isTaskComplete(taskId) {
  * the paystub afterwards would leave a filed deposit resting on payroll that
  * (as far as this app knows) never ran, so the deposit reopens with it.
  */
-function uncompleteDependentTaxTask(paystubTaskId) {
+async function uncompleteDependentTaxTask(paystubTaskId) {
   const parsed = parseTaskId(paystubTaskId);
   if (!parsed || parsed.kind !== TASK_KIND_PAYSTUB) return;
 
@@ -381,7 +416,11 @@ function uncompleteDependentTaxTask(paystubTaskId) {
 
   const taxDate = taxDueDateForPayDate(payDate, depositor);
   if (!taxDate) return;
-  completedTaskIds.delete(buildTaxTaskId(company.id, ymd(taxDate)));
+
+  const taxTaskId = buildTaxTaskId(company.id, ymd(taxDate));
+  if (!completedTaskIds.has(taxTaskId)) return;
+  throwIfError(await requireClient().from("completed_tasks").delete().eq("task_id", taxTaskId));
+  completedTaskIds.delete(taxTaskId);
 }
 
 async function setTaskComplete(taskId, complete) {
@@ -389,13 +428,17 @@ async function setTaskComplete(taskId, complete) {
     throw new Error("Complete the paystub for this run before marking the tax payment done.");
   }
 
+  const client = requireClient();
   if (complete) {
+    // completed_tasks has no single-column id — its primary key is the
+    // (user_id, task_id) pair, so the upsert has to name it explicitly.
+    throwIfError(await client.from("completed_tasks").upsert({ task_id: taskId }, { onConflict: "user_id,task_id" }));
     completedTaskIds.add(taskId);
   } else {
+    throwIfError(await client.from("completed_tasks").delete().eq("task_id", taskId));
     completedTaskIds.delete(taskId);
-    uncompleteDependentTaxTask(taskId);
+    await uncompleteDependentTaxTask(taskId);
   }
-  persistCompletedTasks();
   return complete;
 }
 
@@ -416,16 +459,16 @@ async function createCompany(fields) {
   if (!name) throw new Error("Company name is required.");
 
   const company = normalizeCompany({ ...fields, id: nextCompanyId(), name });
+  await persistCompany(company);
   allCompanies.push(company);
-  persistCompanies();
   return company;
 }
 
 async function deleteCompany(id) {
   const index = allCompanies.findIndex(c => c.id === String(id));
   if (index === -1) throw new Error(`Company ${id} not found.`);
+  throwIfError(await requireClient().from("companies").delete().eq("id", String(id)));
   const [removed] = allCompanies.splice(index, 1);
-  persistCompanies();
   return removed;
 }
 
@@ -433,8 +476,9 @@ async function deleteCompany(id) {
 async function updateCompany(id, patch) {
   const company = getCompanyById(id);
   if (!company) throw new Error(`Company ${id} not found.`);
-  Object.assign(company, normalizeCompany({ ...company, ...patch }));
-  persistCompanies();
+  const merged = normalizeCompany({ ...company, ...patch });
+  await persistCompany(merged);
+  Object.assign(company, merged);
   return company;
 }
 
@@ -446,6 +490,6 @@ async function setCompanyNotes(id, notes) {
   const company = getCompanyById(id);
   if (!company) throw new Error(`Company ${id} not found.`);
   company.notes = String(notes ?? "");
-  persistCompanies();
+  await persistCompany(company);
   return company;
 }

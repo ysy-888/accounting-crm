@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Practice CRM</title>
 <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-<link rel="stylesheet" href="crm.css?v=20260818-1829" />
+<link rel="stylesheet" href="crm.css?v=20260818-1915" />
 </head>
 <body>
 
@@ -30,9 +30,13 @@
           <svg class="header-menu-item-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 3v12"/></svg>
           <span>Export CSV</span>
         </button>
-        <button type="button" class="header-menu-item header-menu-item-separator" id="headerMenuResetData" role="menuitem">
+        <button type="button" class="header-menu-item" id="headerMenuResetData" role="menuitem">
           <svg class="header-menu-item-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 2v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L3 8"/></svg>
           <span>Clear all data</span>
+        </button>
+        <button type="button" class="header-menu-item header-menu-item-separator" id="headerMenuSignOut" role="menuitem">
+          <svg class="header-menu-item-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+          <span>Sign out</span>
         </button>
       </div>
     </div>
@@ -354,20 +358,43 @@
   </div>
 </div>
 
-<script src="js/config.js?v=20260818-1829"></script>
-<script src="js/util.js?v=20260818-1829"></script>
-<!-- Loaded before store.js — the seed data uses its date helpers. -->
-<script src="js/payroll-schedule.js?v=20260818-1829"></script>
-<script src="js/store.js?v=20260818-1829"></script>
-<script src="js/app-shell.js?v=20260818-1829"></script>
-<script src="js/companies-filters.js?v=20260818-1829"></script>
-<script src="js/companies.js?v=20260818-1829"></script>
-<script src="js/company-detail.js?v=20260818-1829"></script>
-<script src="js/company-form.js?v=20260818-1829"></script>
-<script src="js/payroll.js?v=20260818-1829"></script>
+<!-- ── Sign in ────────────────────────────────────────────────── -->
+<div id="loginScreen" class="login-screen" hidden>
+  <div class="login-card">
+    <div class="login-title">Practice CRM</div>
+    <div class="login-subtitle">Sign in to continue</div>
+    <form id="loginForm" class="login-form" novalidate>
+      <label class="form-field form-field--full">
+        <span class="form-label">Email</span>
+        <input type="email" class="form-input" id="loginEmail" autocomplete="username" required />
+      </label>
+      <label class="form-field form-field--full">
+        <span class="form-label">Password</span>
+        <input type="password" class="form-input" id="loginPassword" autocomplete="current-password" required />
+      </label>
+      <span class="form-error login-error" id="loginError" hidden></span>
+      <button type="submit" class="btn btn-primary login-submit-btn" id="loginSubmitBtn">Sign in</button>
+    </form>
+  </div>
+</div>
+
+<!-- Supabase JS client — auth.js and store.js both depend on the global it exports. -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="js/config.js?v=20260818-1915"></script>
+<!-- Needs SUPABASE_URL/KEY from config.js and the CDN client above. -->
+<script src="js/auth.js?v=20260818-1915"></script>
+<script src="js/util.js?v=20260818-1915"></script>
+<script src="js/payroll-schedule.js?v=20260818-1915"></script>
+<script src="js/store.js?v=20260818-1915"></script>
+<script src="js/app-shell.js?v=20260818-1915"></script>
+<script src="js/companies-filters.js?v=20260818-1915"></script>
+<script src="js/companies.js?v=20260818-1915"></script>
+<script src="js/company-detail.js?v=20260818-1915"></script>
+<script src="js/company-form.js?v=20260818-1915"></script>
+<script src="js/payroll.js?v=20260818-1915"></script>
 <!-- After payroll.js — the sales tax section reuses its task checkbox. -->
-<script src="js/sales-tax.js?v=20260818-1829"></script>
-<script src="js/calendar.js?v=20260818-1829"></script>
-<script src="js/main.js?v=20260818-1829"></script>
+<script src="js/sales-tax.js?v=20260818-1915"></script>
+<script src="js/calendar.js?v=20260818-1915"></script>
+<script src="js/main.js?v=20260818-1915"></script>
 </body>
 </html>

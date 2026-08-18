@@ -2577,6 +2577,11 @@ td.n41-status-mismatch,
   overflow: hidden;
 }
 
+/* display:flex above wins over the [hidden] UA style unless restated here —
+   otherwise the companies table stays laid out (and screen-reader-visible)
+   behind the login screen instead of actually being removed. */
+.app-main[hidden] { display: none !important; }
+
 .app-main > .table-scroll-y:not([hidden]),
 .app-main > .po-view-content:not([hidden]) {
   flex: 1;
@@ -4737,3 +4742,64 @@ span.dash-event { cursor: pointer; /* clicking selects the day */ }
 /* The Home rail is narrower than the detail sidebar — let cards wrap. */
 #upcomingTasksList .payroll-run-head { row-gap: 4px; }
 #upcomingTasksList .payroll-run-count { margin-left: 0; }
+
+/* ============================================================
+   Login screen
+   ============================================================ */
+
+.login-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  padding: 24px;
+}
+
+.login-screen[hidden] { display: none !important; }
+
+.login-card {
+  width: 100%;
+  max-width: 340px;
+  padding: 28px 26px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  font-family: var(--font);
+}
+
+.login-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 3px;
+}
+
+.login-subtitle {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 20px;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.login-error {
+  padding: 8px 10px;
+  background: var(--danger-tint);
+  border: 1px solid #f0c8c8;
+  border-radius: 6px;
+}
+
+.login-submit-btn {
+  width: 100%;
+  justify-content: center;
+  padding: 9px;
+  margin-top: 2px;
+}
