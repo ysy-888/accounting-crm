@@ -77,6 +77,16 @@ function formatTaskDate(value) {
   return `${WEEKDAY_SHORT[date.getDay()]}, ${date.toLocaleString(undefined, { month: "short" })} ${date.getDate()}`;
 }
 
+/**
+ * Compact form for task cards, e.g. "3/14 Fri" — the number first, since
+ * that's what you scan for, with the weekday trailing as context.
+ */
+function formatTaskDateShort(value) {
+  const date = typeof value === "string" ? parseYmd(value) : value;
+  if (!date) return EMPTY_DISPLAY;
+  return `${date.getMonth() + 1}/${date.getDate()} ${WEEKDAY_SHORT[date.getDay()]}`;
+}
+
 // ── Weekend adjustment ───────────────────────────────────────────────────────
 
 /**

@@ -50,6 +50,57 @@ function describeAnyTask(task) {
 /** Hide tasks already ticked off. */
 let calHideCompleted = false;
 
+// ── Task-group selection ─────────────────────────────────────────────────────
+//
+// A pay run and the deposit it feeds are one unit of work but land on
+// different days, so selecting a card lights up every day it touches — the
+// paystub on the 24th and its tax payment on the 31st highlight together.
+
+/** Task ids belonging to the currently selected card, or empty for none. */
+let calSelectedTaskIds = new Set();
+
+function isCalGroupSelected(taskIds) {
+  return taskIds.length > 0 && taskIds.every(id => calSelectedTaskIds.has(id));
+}
+
+function selectCalGroup(taskIds) {
+  // Clicking the selected card again clears it.
+  if (isCalGroupSelected(taskIds) && calSelectedTaskIds.size === taskIds.length) {
+    calSelectedTaskIds = new Set();
+  } else {
+    calSelectedTaskIds = new Set(taskIds);
+  }
+  applyCalGroupSelection();
+}
+
+/** Paint the selection across both the grid chips and the task cards. */
+function applyCalGroupSelection() {
+  document.querySelectorAll("#calGrid .dash-event[data-task-id]").forEach(chip => {
+    chip.classList.toggle("is-group-selected", calSelectedTaskIds.has(chip.dataset.taskId));
+  });
+  document.querySelectorAll(".payroll-run.is-selectable").forEach(card => {
+    card.classList.toggle("is-selected", isCalGroupSelected(card.groupTaskIds ?? []));
+  });
+}
+
+/**
+ * Make a task card selectable, wiring it to the shared highlight state.
+ *
+ * The ids live on the element as a real array rather than a data attribute:
+ * task ids already contain "|" as their own field separator, so round-tripping
+ * them through a joined string shreds them.
+ */
+function attachCalGroupSelection(card, taskIds) {
+  card.groupTaskIds = taskIds;
+  card.classList.add("is-selectable");
+  card.classList.toggle("is-selected", isCalGroupSelected(taskIds));
+  card.addEventListener("click", e => {
+    // Checkboxes and the company link keep their own behaviour.
+    if (e.target.closest("input, button, label")) return;
+    selectCalGroup(taskIds);
+  });
+}
+
 // ── Event assembly ───────────────────────────────────────────────────────────
 
 function getCalRange() {
@@ -138,11 +189,44 @@ function onCalScroll() {
 
 // ── Grid ─────────────────────────────────────────────────────────────────────
 
+/** A glyph per task kind, so the three read apart at a glance. */
+function createCalEventIcon(kind) {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("class", "dash-event-icon");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("stroke", "currentColor");
+  svg.setAttribute("stroke-width", "2.2");
+  svg.setAttribute("stroke-linecap", "round");
+  svg.setAttribute("stroke-linejoin", "round");
+  svg.setAttribute("aria-hidden", "true");
+
+  const paths = {
+    // Paystub — a document with lines on it.
+    [TASK_KIND_PAYSTUB]: ["M6 2h8l4 4v16H6z", "M14 2v5h5", "M9 13h7", "M9 17h5"],
+    // Payroll tax — a bank / government building.
+    [TASK_KIND_TAX]: ["M3 10h18", "M5 10v9", "M19 10v9", "M12 10v9", "M2 20h20", "M12 3 3 8h18z"],
+    // Sales tax — a price tag.
+    [TASK_KIND_SALES_TAX]: ["M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9z", "M7.5 7.5h.01"],
+  }[kind] ?? [];
+
+  paths.forEach(d => {
+    const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    p.setAttribute("d", d);
+    svg.appendChild(p);
+  });
+  return svg;
+}
+
 function createCalEventChip(event) {
   const chip = document.createElement("button");
   chip.type = "button";
   chip.className = `dash-event cal-event--${event.kind}${event.done ? " is-done" : ""}`;
   chip.title = `${event.companyName} · ${event.label} · ${describeAnyTask(event)}`;
+  // What the group highlight matches on.
+  chip.dataset.taskId = event.id;
+
+  chip.appendChild(createCalEventIcon(event.kind));
 
   const label = document.createElement("span");
   label.className = "dash-event-title";
@@ -154,9 +238,12 @@ function createCalEventChip(event) {
   meta.textContent = CAL_EVENT_SHORT_LABELS[event.kind] ?? "Pay";
   chip.appendChild(meta);
 
+  // Open the day, then select the group this chip belongs to — clicking a
+  // specific task should land on that task's card, not just its date.
   chip.addEventListener("click", e => {
     e.stopPropagation();
-    selectCalDay(event.dueDate);
+    if (calSelectedYmd !== event.dueDate) selectCalDay(event.dueDate);
+    selectCalGroupForTask(event);
   });
   return chip;
 }
@@ -247,6 +334,8 @@ function renderCalendarGrid() {
   scroll.addEventListener("scroll", onCalScroll, { passive: true });
   sizeCalRows();
   scrollCalToMonth(year, month, { instant: true });
+  // The chips are new nodes, so the highlight has to be painted back on.
+  applyCalGroupSelection();
 }
 
 // ── Day pane ─────────────────────────────────────────────────────────────────
@@ -272,6 +361,63 @@ function closeCalDayPane() {
   renderCalDayPane();
 }
 
+/**
+ * The groups with any task due on `dayYmd`. A card is the unit here, same as
+ * the rail: clicking the 24th surfaces the whole run its paystub belongs to,
+ * tax payment included, rather than that one task in isolation.
+ *
+ * The scan window is wide because a deposit can trail its pay date by months
+ * (a quarterly depositor's lands after the quarter ends), and the run that
+ * owns a tax task due today may sit well behind it.
+ */
+function buildDayPaneEntries(dayYmd) {
+  const day = parseYmd(dayYmd);
+  if (!day) return [];
+  const from = ymd(addDays(day, -190));
+  const to = ymd(addDays(day, 190));
+  const onChange = () => renderCalendar();
+  const entries = [];
+
+  getAllCompanies().forEach(company => {
+    if (company.services?.payroll) {
+      groupPayrollRuns(buildPayrollRuns(company, from, to)).forEach(group => {
+        const tasks = [...group.runs.map(r => r.paystub), group.tax].filter(Boolean);
+        const onThisDay = tasks.filter(t => t.dueDate === dayYmd && taskPassesCalFilters(t));
+        if (onThisDay.length === 0) return;
+
+        entries.push({
+          company,
+          taskIds: tasks.map(t => t.id),
+          build: () => group.runs.length > 1
+            ? createBatchedRunCard(company, group, { showCompany: true, onChange })
+            : createPayrollRunCard(company, group.runs[0], { showCompany: true, onChange }),
+        });
+      });
+    }
+
+    if (typeof buildSalesTaxTasks === "function") {
+      buildSalesTaxTasks(company, from, to)
+        .filter(t => t.dueDate === dayYmd && taskPassesCalFilters(t))
+        .forEach(task => {
+          entries.push({
+            company,
+            taskIds: [task.id],
+            build: () => createSalesTaxCard(company, task, { showCompany: true, onChange }),
+          });
+        });
+    }
+  });
+
+  return entries.sort((a, b) => a.company.name.localeCompare(b.company.name));
+}
+
+/** Select whichever group on the open day owns this task. */
+function selectCalGroupForTask(task) {
+  const entry = buildDayPaneEntries(task.dueDate).find(e => e.taskIds.includes(task.id));
+  if (entry) selectCalGroup(entry.taskIds);
+  renderCalDayPane();
+}
+
 function renderCalDayPane() {
   const pane = document.getElementById("calDayPane");
   if (!pane) return;
@@ -285,18 +431,15 @@ function renderCalDayPane() {
   const title = document.getElementById("calDayPaneTitle");
   if (title) title.textContent = formatTaskDate(calSelectedYmd);
 
-  // Read straight from the source so completions tick live without a re-render.
-  const events = (buildAllTasks(calSelectedYmd, calSelectedYmd) ?? [])
-    .filter(task => calFilterSelection.has(task.kind))
-    .filter(task => !(calHideCompleted && isTaskComplete(task.id)));
+  const entries = buildDayPaneEntries(calSelectedYmd);
 
   const count = document.getElementById("calDayPaneCount");
-  if (count) count.textContent = events.length ? String(events.length) : "";
+  if (count) count.textContent = entries.length ? String(entries.length) : "";
 
   const body = document.getElementById("calDayPaneList");
   if (!body) return;
 
-  if (events.length === 0) {
+  if (entries.length === 0) {
     const empty = document.createElement("div");
     empty.className = "dash-empty";
     empty.textContent = "Nothing due this day.";
@@ -304,60 +447,12 @@ function renderCalDayPane() {
     return;
   }
 
-  body.replaceChildren(...events.map(task => {
-    const unlocked = isTaxTaskUnlocked(task);
-    const row = document.createElement("div");
-    row.className = "cal-day-task" + (isTaskComplete(task.id) ? " is-done" : "") + (unlocked ? "" : " is-locked");
-
-    const cb = document.createElement("input");
-    cb.type = "checkbox";
-    cb.className = "cal-day-task-check";
-    cb.checked = isTaskComplete(task.id);
-    cb.disabled = !unlocked;
-    cb.setAttribute("aria-label", `${task.label} for ${task.companyName}`);
-    if (!unlocked) cb.title = "Complete the paystub for this run first.";
-    cb.addEventListener("change", async () => {
-      const next = cb.checked;
-      try {
-        await setTaskComplete(task.id, next);
-      } catch (err) {
-        cb.checked = !next;
-        showIndicator(err.message || "Could not update task.", "error");
-        return;
-      }
-      row.classList.toggle("is-done", next);
-      renderCalendarGrid();
-      applyCalDaySelection();
-      renderUpcomingTasks();
-      if (typeof refreshPayrollViews === "function") refreshPayrollViews(getCompanyById(task.companyId));
-    });
-
-    const main = document.createElement("div");
-    main.className = "cal-day-task-main";
-
-    const name = document.createElement("button");
-    name.type = "button";
-    name.className = "cal-day-task-company";
-    name.textContent = task.companyName;
-    name.addEventListener("click", () => openCompanyDetail(task.companyId));
-
-    const sub = document.createElement("span");
-    sub.className = "cal-day-task-sub";
-    sub.textContent = `${task.label} · ${describeAnyTask(task)}`;
-    main.append(name, sub);
-
-    row.append(cb, main);
-
-    if (task.movedForWeekend) {
-      const flag = document.createElement("span");
-      flag.className = "cal-day-task-flag";
-      flag.textContent = "moved";
-      flag.title = `Falls on ${formatTaskDate(task.date)}, a weekend — pulled back to the Friday before.`;
-      row.appendChild(flag);
-    }
-
-    return row;
+  body.replaceChildren(...entries.map(entry => {
+    const card = entry.build();
+    attachCalGroupSelection(card, entry.taskIds);
+    return card;
   }));
+  applyCalGroupSelection();
 }
 
 // ── Toolbar ──────────────────────────────────────────────────────────────────
@@ -456,7 +551,8 @@ function taskPassesCalFilters(task) {
 }
 
 function buildUpcomingCardEntries() {
-  const from = todayYmd();
+  // Overdue work sits before today, so the window reaches back as well.
+  const from = ymd(addDays(new Date(), -CAL_UPCOMING_DAYS));
   const to = ymd(addDays(new Date(), CAL_UPCOMING_DAYS));
   const onChange = () => renderCalendar();
   const entries = [];
@@ -468,9 +564,12 @@ function buildUpcomingCardEntries() {
                            taskPassesCalFilters(group.tax);
         if (!anyVisible) return;
 
+        const tasks = [...group.runs.map(r => r.paystub), group.tax].filter(Boolean);
         entries.push({
           sortKey: group.runs[0].paystub.dueDate,
           company,
+          taskIds: tasks.map(t => t.id),
+          dueDates: tasks.map(t => t.dueDate),
           build: () => group.runs.length > 1
             ? createBatchedRunCard(company, group, { showCompany: true, onChange })
             : createPayrollRunCard(company, group.runs[0], { showCompany: true, onChange }),
@@ -485,6 +584,8 @@ function buildUpcomingCardEntries() {
           entries.push({
             sortKey: task.dueDate,
             company,
+            taskIds: [task.id],
+            dueDates: [task.dueDate],
             build: () => createSalesTaxCard(company, task, { showCompany: true, onChange }),
           });
         });
@@ -495,24 +596,41 @@ function buildUpcomingCardEntries() {
     a.sortKey.localeCompare(b.sortKey) || a.company.name.localeCompare(b.company.name));
 }
 
+/** Which status tab the Home rail is showing. */
+let homeTaskStatus = "upcoming";
+
 function renderUpcomingTasks() {
   const list = document.getElementById("upcomingTasksList");
   if (!list) return;
 
-  const entries = buildUpcomingCardEntries();
+  const all = buildUpcomingCardEntries()
+    .map(entry => ({ ...entry, status: classifyTaskStatus(entry.taskIds, entry.dueDates) }));
 
+  const counts = { upcoming: 0, overdue: 0, completed: 0 };
+  all.forEach(e => { counts[e.status] += 1; });
+
+  renderTaskStatusTabs("homeTaskTabs", homeTaskStatus, counts, key => {
+    homeTaskStatus = key;
+    renderUpcomingTasks();
+  });
+
+  const shown = all.filter(e => e.status === homeTaskStatus);
   const count = document.getElementById("upcomingTasksCount");
-  if (count) count.textContent = entries.length ? String(entries.length) : "";
+  if (count) count.textContent = shown.length ? String(shown.length) : "";
 
-  if (entries.length === 0) {
+  if (shown.length === 0) {
     const empty = document.createElement("div");
     empty.className = "dash-empty";
-    empty.textContent = `Nothing due in the next ${CAL_UPCOMING_DAYS} days.`;
+    empty.textContent = `Nothing ${homeTaskStatus}.`;
     list.replaceChildren(empty);
     return;
   }
 
-  list.replaceChildren(...entries.map(entry => entry.build()));
+  list.replaceChildren(...shown.map(entry => {
+    const card = entry.build();
+    attachCalGroupSelection(card, entry.taskIds);
+    return card;
+  }));
 }
 
 // ── Entry points ─────────────────────────────────────────────────────────────

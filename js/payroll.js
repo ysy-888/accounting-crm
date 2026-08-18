@@ -15,6 +15,54 @@
 /** How far ahead the upcoming list looks. */
 const PAYROLL_UPCOMING_DAYS = 60;
 
+// ── Task status tabs ─────────────────────────────────────────────────────────
+//
+// The same three buckets drive both task lists (Home rail, company sidebar).
+// A card is bucketed by its own tasks: anything still open and past due makes
+// the card overdue, everything done makes it completed, and the rest is
+// upcoming — so a half-finished run stays in Upcoming until it's actually done.
+
+const TASK_STATUS_TABS = [
+  { key: "upcoming", label: "Upcoming" },
+  { key: "overdue", label: "Overdue" },
+  { key: "completed", label: "Completed" },
+];
+
+function classifyTaskStatus(taskIds, dueDates) {
+  const today = todayYmd();
+  const open = taskIds.filter(id => !isTaskComplete(id));
+  if (open.length === 0) return "completed";
+  // Overdue if any still-open task's due date has passed.
+  const anyPastDue = taskIds.some((id, i) => !isTaskComplete(id) && dueDates[i] < today);
+  return anyPastDue ? "overdue" : "upcoming";
+}
+
+/** Builds the tab strip; `onChange` receives the newly picked status key. */
+function renderTaskStatusTabs(containerId, activeKey, counts, onChange) {
+  const wrap = document.getElementById(containerId);
+  if (!wrap) return;
+
+  wrap.replaceChildren(...TASK_STATUS_TABS.map(tab => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "task-tab" + (tab.key === activeKey ? " is-active" : "");
+    btn.dataset.status = tab.key;
+    btn.setAttribute("role", "tab");
+    btn.setAttribute("aria-selected", tab.key === activeKey ? "true" : "false");
+    btn.textContent = tab.label;
+
+    const n = counts?.[tab.key] ?? 0;
+    if (n > 0) {
+      const badge = document.createElement("span");
+      badge.className = "task-tab-count";
+      badge.textContent = String(n);
+      btn.appendChild(badge);
+    }
+    btn.addEventListener("click", () => onChange(tab.key));
+    return btn;
+  }));
+}
+
 /**
  * Re-render whatever is currently showing this company's payroll state —
  * the section panel (if Payroll is the active tab), the sidebar schedule
@@ -47,8 +95,12 @@ function createPayrollGroupCard(company, group) {
   const head = document.createElement("div");
   head.className = "payroll-group-head";
 
-  const name = document.createElement("div");
-  name.className = "payroll-group-name";
+  // The schedule reads as its coloured pill here too, so a card is
+  // identifiable by the same colour it carries everywhere else.
+  const name = document.createElement("span");
+  name.className = "schedule-pill payroll-group-name";
+  name.dataset.schedule = group.schedule;
+  name.dataset.group = "payroll";
   name.textContent = group.schedule;
   head.appendChild(name);
   card.appendChild(head);
@@ -113,12 +165,9 @@ function createEmployeeList(company, group) {
   head.appendChild(title);
   wrap.appendChild(head);
 
-  if (group.employees.length === 0) {
-    const empty = document.createElement("div");
-    empty.className = "payroll-employees-empty";
-    empty.textContent = "No employees on this schedule yet.";
-    wrap.appendChild(empty);
-  } else {
+  // No "none yet" line — the count in the heading already says so, and the
+  // add row directly below is the obvious next move.
+  if (group.employees.length > 0) {
     const list = document.createElement("ul");
     list.className = "payroll-employee-list";
     group.employees.forEach(employee => {
@@ -269,7 +318,7 @@ function createTaskCheckbox(task, onChange, { nameOverride } = {}) {
 
   const due = document.createElement("span");
   due.className = "payroll-task-due";
-  due.textContent = formatTaskDate(task.dueDate);
+  due.textContent = formatTaskDateShort(task.dueDate);
   if (task.movedForWeekend) {
     due.classList.add("is-moved");
     due.title = `Falls on ${formatTaskDate(task.date)}, a weekend — due the Friday before.`;
@@ -533,7 +582,7 @@ function createPayrollRunCard(company, run, { showCompany = false, onChange } = 
 
   const date = document.createElement("span");
   date.className = "payroll-run-date";
-  date.textContent = formatTaskDate(run.paystub.dueDate);
+  date.textContent = formatTaskDateShort(run.paystub.dueDate);
 
   const pill = document.createElement("span");
   pill.className = "schedule-pill";
@@ -607,7 +656,7 @@ function createBatchedRunCard(company, group, { showCompany = false, onChange } 
 
   const date = document.createElement("span");
   date.className = "payroll-run-date";
-  date.textContent = formatTaskDate(group.tax.dueDate);
+  date.textContent = formatTaskDateShort(group.tax.dueDate);
 
   const pill = document.createElement("span");
   pill.className = "schedule-pill";
@@ -653,13 +702,20 @@ function createBatchedRunCard(company, group, { showCompany = false, onChange } 
  * payments interleaved by due date, so the panel reads as one to-do list
  * rather than one list per service.
  */
+/**
+ * Each entry carries the task ids it covers so the status tabs can bucket it
+ * without rebuilding the card first.
+ */
 function buildCompanyUpcomingCards(company, from, to, options = {}) {
   const entries = [];
 
   if (company.services?.payroll) {
     groupPayrollRuns(buildPayrollRuns(company, from, to)).forEach(group => {
+      const tasks = [...group.runs.map(r => r.paystub), group.tax].filter(Boolean);
       entries.push({
         sortKey: group.runs[0].paystub.dueDate,
+        taskIds: tasks.map(t => t.id),
+        dueDates: tasks.map(t => t.dueDate),
         build: () => group.runs.length > 1
           ? createBatchedRunCard(company, group, options)
           : createPayrollRunCard(company, group.runs[0], options),
@@ -669,37 +725,57 @@ function buildCompanyUpcomingCards(company, from, to, options = {}) {
 
   if (typeof buildSalesTaxTasks === "function") {
     buildSalesTaxTasks(company, from, to).forEach(task => {
-      entries.push({ sortKey: task.dueDate, build: () => createSalesTaxCard(company, task, options) });
+      entries.push({
+        sortKey: task.dueDate,
+        taskIds: [task.id],
+        dueDates: [task.dueDate],
+        build: () => createSalesTaxCard(company, task, options),
+      });
     });
   }
 
   return entries.sort((a, b) => a.sortKey.localeCompare(b.sortKey));
 }
 
+/** Which status tab the company task list is showing. */
+let companyTaskStatus = "upcoming";
+
 function renderCompanyUpcomingRuns(company) {
   const list = document.getElementById("companyUpcomingList");
   const countEl = document.getElementById("companyUpcomingCount");
   if (!list) return;
 
-  const from = todayYmd();
+  // Overdue work sits before today, so the window has to reach backwards.
+  const from = ymd(addDays(new Date(), -PAYROLL_UPCOMING_DAYS));
   const to = ymd(addDays(new Date(), PAYROLL_UPCOMING_DAYS));
-  const cards = buildCompanyUpcomingCards(company, from, to);
+  const all = buildCompanyUpcomingCards(company, from, to)
+    .map(entry => ({ ...entry, status: classifyTaskStatus(entry.taskIds, entry.dueDates) }));
 
-  if (countEl) countEl.textContent = cards.length ? String(cards.length) : "";
+  const counts = { upcoming: 0, overdue: 0, completed: 0 };
+  all.forEach(e => { counts[e.status] += 1; });
 
-  if (cards.length === 0) {
+  renderTaskStatusTabs("companyTaskTabs", companyTaskStatus, counts, key => {
+    companyTaskStatus = key;
+    renderCompanyUpcomingRuns(getCompanyById(company.id) ?? company);
+  });
+
+  const shown = all.filter(e => e.status === companyTaskStatus);
+  if (countEl) countEl.textContent = shown.length ? String(shown.length) : "";
+
+  if (shown.length === 0) {
     const configured = getEnabledPayrollGroups(company).filter(isPayrollGroupConfigured);
+    const noServices = !company.services?.payroll && !company.services?.salesTax;
     list.replaceChildren(miniCalEmptyNode(
-      !company.services?.payroll && !company.services?.salesTax
+      noServices
         ? "Enable Payroll or Sales Tax to start tracking work."
-        : configured.length === 0 && company.services?.payroll
+        : configured.length === 0 && company.services?.payroll && !company.services?.salesTax
           ? "Set a pay schedule to generate the run calendar."
-          : "Nothing due in the next 60 days."
+          : `Nothing ${companyTaskStatus}.`
     ));
     return;
   }
 
-  list.replaceChildren(...cards.map(entry => entry.build()));
+  list.replaceChildren(...shown.map(entry => entry.build()));
 }
 
 /** Called whenever the company detail page opens, and after any payroll edit. */

@@ -164,7 +164,7 @@ function createSalesTaxCard(company, task, { showCompany = false, onChange } = {
 
   const date = document.createElement("span");
   date.className = "payroll-run-date";
-  date.textContent = formatTaskDate(task.dueDate);
+  date.textContent = formatTaskDateShort(task.dueDate);
 
   const pill = document.createElement("span");
   pill.className = "schedule-pill";

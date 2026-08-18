@@ -4579,20 +4579,20 @@ span.dash-event { cursor: pointer; /* clicking selects the day */ }
 }
 
 @media (max-width: 960px) {
-  /* Too narrow for a side-by-side split — stack the schedule panels under
-     the main column and let them scroll away with it. */
+  /* Too narrow for any side-by-side split — one column, everything stacked,
+     scrolling with the page. */
   .company-detail-body { flex-direction: column; }
-  .company-detail-side {
+  .company-detail-side,
+  .company-detail-side--calendar,
+  .company-detail-side--tasks {
     flex: none;
     max-width: none;
-    flex-direction: row;
     position: static;
     height: auto;
     min-height: 0;
   }
-  /* Side by side across the bottom, each sizing to its own content. */
   .company-mini-cal-panel,
-  .company-detail-side .company-upcoming-panel { flex: 1 1 0; min-width: 0; min-height: 0; }
+  .company-detail-side .company-upcoming-panel { min-width: 0; min-height: 0; }
   .company-upcoming-panel .dashboard-panel-body { max-height: 320px; }
 }
 
@@ -4719,18 +4719,20 @@ span.dash-event { cursor: pointer; /* clicking selects the day */ }
 
 .form-check[data-group]:has(input:checked) { color: var(--sched-fg); }
 
-/* ── Calendar chips ── */
+/* ── Calendar chips ──
+   Paystub and payroll tax stay in the blue family, but pushed to opposite
+   ends of it — bright azure against deep indigo — since a half-step apart
+   was not telling them apart at chip size. The icons carry the rest. */
 .dash-event.cal-event--paystub {
-  background: #e6f1fb;
-  color: #185fa5;
-  border-color: #cfe2f4;
+  background: #ddeefc;
+  color: #0d6ba8;
+  border-color: #b9dcf5;
 }
 
-/* Payroll tax is the same family as the paystub it pays, a shade deeper. */
 .dash-event.cal-event--tax {
-  background: #dfeaf7;
-  color: #27548c;
-  border-color: #c3d7ee;
+  background: #e0e2f7;
+  color: #333f9c;
+  border-color: #c3c8ef;
 }
 
 .dash-event.cal-event--salesTax {
@@ -4739,9 +4741,16 @@ span.dash-event { cursor: pointer; /* clicking selects the day */ }
   border-color: #eedcc0;
 }
 
+.dash-event-icon {
+  flex: 0 0 auto;
+  width: 11px;
+  height: 11px;
+  opacity: 0.85;
+}
+
 /* ── Mini-calendar dots ── */
-.mini-cal-dot--paystub  { background: #1c72c4; }
-.mini-cal-dot--tax      { background: #27548c; }
+.mini-cal-dot--paystub  { background: #0d6ba8; }
+.mini-cal-dot--tax      { background: #333f9c; }
 .mini-cal-dot--salesTax { background: #b06c1b; }
 
 /* ── Upcoming cards ── */
@@ -4880,3 +4889,99 @@ span.dash-event { cursor: pointer; /* clicking selects the day */ }
 }
 
 .service-block-row.is-invalid .form-label { color: var(--danger); }
+
+/* ============================================================
+   Task status tabs (Upcoming / Overdue / Completed)
+   ============================================================ */
+
+.task-panel-header { gap: 6px; padding: 8px 10px; }
+
+.task-tabs {
+  display: flex;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.task-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  font-family: var(--font);
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.task-tab:hover:not(.is-active) { background: var(--row-hover); color: var(--text); }
+
+.task-tab.is-active {
+  background: var(--accent-light);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.task-tab-count {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 0 5px;
+  border-radius: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+.task-tab.is-active .task-tab-count { background: var(--surface); color: var(--text); }
+
+/* ============================================================
+   Task group selection — card and its calendar events light up together
+   ============================================================ */
+
+.payroll-run.is-selectable { cursor: pointer; }
+
+.payroll-run.is-selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-light);
+}
+
+/* Every day the selected group touches, across the whole grid. */
+.dash-event.is-group-selected {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  font-weight: 600;
+}
+
+/* ============================================================
+   Company detail — calendar and tasks as separate columns
+   ============================================================ */
+
+.company-detail-side--calendar { flex: 0 0 258px; max-width: 258px; }
+.company-detail-side--tasks    { flex: 0 0 296px; max-width: 296px; }
+
+/* The mini calendar is its own height now, not a stretched column. */
+.company-detail-side--calendar .company-mini-cal-panel { flex: 0 0 auto; }
+.company-detail-side--tasks .company-upcoming-panel { flex: 1 1 auto; min-height: 0; }
+
+/* Two side columns plus the main one is too much below this width. */
+/* Three columns stop fitting here: main takes a full row of its own and the
+   calendar and tasks share the row beneath it. */
+@media (max-width: 1240px) and (min-width: 961px) {
+  .company-detail-body { flex-wrap: wrap; }
+  .company-detail-main { flex: 1 1 100%; }
+  .company-detail-side--calendar,
+  .company-detail-side--tasks {
+    flex: 1 1 0;
+    max-width: none;
+    position: static;
+    height: auto;
+  }
+  .company-detail-side--tasks .company-upcoming-panel .dashboard-panel-body {
+    max-height: 380px;
+  }
+}
