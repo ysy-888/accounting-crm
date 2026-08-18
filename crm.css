@@ -2722,7 +2722,10 @@ td.n41-status-mismatch,
   gap: 16px;
 }
 
-/* The schedule panels stay put while the main column scrolls past them. */
+/* The schedule panels stay put while the main column scrolls past them.
+   A definite height, not max-height: the column is content-sized otherwise,
+   which leaves flex:1 below with no free space to claim and collapses the
+   upcoming list to nothing. */
 .company-detail-side {
   flex: 0 0 300px;
   max-width: 300px;
@@ -2732,13 +2735,17 @@ td.n41-status-mismatch,
   gap: 12px;
   position: sticky;
   top: 0;
-  max-height: calc(100vh - 92px);
+  /* App header (56) + footer (44) + this view's own padding (16 top and
+     bottom). Overshooting here makes a short company scroll for no reason. */
+  height: calc(100vh - 132px);
+  min-height: 420px;
 }
 
-/* Mini calendar and notes are their natural height; the upcoming list takes
-   whatever is left and scrolls inside it. */
+/* Mini calendar is its natural height; the upcoming list takes what's left
+   and scrolls inside it. The floor needs the extra specificity to beat
+   .dashboard-panel's own min-height further down the file. */
 .company-mini-cal-panel { flex: 0 0 auto; }
-.company-upcoming-panel { flex: 1 1 0; min-height: 120px; }
+.company-detail-side .company-upcoming-panel { flex: 1 1 0; min-height: 140px; }
 .company-notes-panel { flex: 0 0 auto; }
 
 /* Icon only — the chevron plus the page context is enough, and the label
@@ -2862,13 +2869,17 @@ td.n41-status-mismatch,
 }
 
 /* Service section tabs + panels */
-/* Own row above the panel; the column's gap provides the spacing below. */
+/* Own row above the panel; the column's gap provides the spacing below.
+   overflow-y must be pinned to hidden: setting overflow-x alone computes the
+   other axis to auto, and the active tab's underline overhangs just enough to
+   raise a vertical scrollbar with nowhere to scroll. */
 .company-section-tabs {
   display: flex;
   gap: 2px;
   border-bottom: 1px solid var(--border);
   margin-bottom: -8px;
   overflow-x: auto;
+  overflow-y: hidden;
   flex-shrink: 0;
 }
 
@@ -2892,12 +2903,14 @@ td.n41-status-mismatch,
   font-weight: 600;
 }
 
+/* bottom:0, not -1px — an overhang here is what the row's hidden overflow
+   would clip, and what used to force that dead scrollbar. */
 .company-section-tab.is-active::after {
   content: "";
   position: absolute;
   left: 10px;
   right: 10px;
-  bottom: -1px;
+  bottom: 0;
   height: 2px;
   background: var(--accent);
   border-radius: 1px;
@@ -4574,10 +4587,12 @@ span.dash-event { cursor: pointer; /* clicking selects the day */ }
     max-width: none;
     flex-direction: row;
     position: static;
-    max-height: none;
+    height: auto;
+    min-height: 0;
   }
+  /* Side by side across the bottom, each sizing to its own content. */
   .company-mini-cal-panel,
-  .company-upcoming-panel { flex: 1 1 0; min-width: 0; min-height: 0; }
+  .company-detail-side .company-upcoming-panel { flex: 1 1 0; min-width: 0; min-height: 0; }
   .company-upcoming-panel .dashboard-panel-body { max-height: 320px; }
 }
 
