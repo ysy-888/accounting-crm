@@ -157,15 +157,6 @@ function createSalesTaxCard(company, task, { showCompany = false, onChange } = {
   const card = document.createElement("div");
   card.className = "payroll-run payroll-run--sales-tax" + (done ? " is-complete" : "");
 
-  if (showCompany) appendCardCompanyName(card, company);
-
-  const head = document.createElement("div");
-  head.className = "payroll-run-head";
-
-  const date = document.createElement("span");
-  date.className = "payroll-run-date";
-  date.textContent = formatTaskDateShort(task.dueDate);
-
   const pill = document.createElement("span");
   pill.className = "schedule-pill";
   pill.dataset.schedule = task.schedule;
@@ -173,19 +164,14 @@ function createSalesTaxCard(company, task, { showCompany = false, onChange } = {
   pill.textContent = getScheduleAbbreviation(task.schedule);
   if (pill.textContent !== task.schedule) pill.title = task.schedule;
 
-  const context = document.createElement("span");
-  context.className = "payroll-run-count";
-  context.textContent = `${task.periodLabel} · ${task.state}`;
-
-  head.append(date, pill, context);
-
-  if (done) {
-    const badge = document.createElement("span");
-    badge.className = "payroll-run-complete-badge";
-    badge.textContent = "Done";
-    head.appendChild(badge);
-  }
-  card.appendChild(head);
+  // The period is the heading; the due date lives on the sub-task row below,
+  // and the state is already on the company itself.
+  card.appendChild(createCardHeader(company, {
+    showCompany,
+    heading: task.periodLabel,
+    pill,
+    complete: done,
+  }));
 
   const onToggle = onChange ?? (() => {
     if (getCurrentAppView() === "company" && currentSectionKey === "salesTax") {

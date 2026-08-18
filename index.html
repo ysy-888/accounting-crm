@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Practice CRM</title>
 <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-<link rel="stylesheet" href="crm.css?v=20260818-2158" />
+<link rel="stylesheet" href="crm.css?v=20260818-2307" />
 </head>
 <body>
 
@@ -154,16 +154,6 @@
           </section>
         </div>
 
-        <aside class="company-detail-side company-detail-side--calendar" id="companyDetailSide">
-          <section class="dashboard-panel company-mini-cal-panel">
-            <div class="dashboard-panel-header">
-              <button type="button" class="btn btn-page" id="companyMiniCalPrev" title="Previous month" aria-label="Previous month">‹</button>
-              <span class="dashboard-panel-title company-mini-cal-title" id="companyMiniCalTitle">—</span>
-              <button type="button" class="btn btn-page" id="companyMiniCalNext" title="Next month" aria-label="Next month">›</button>
-            </div>
-            <div class="dashboard-panel-body" id="companyMiniCalBody"></div>
-          </section>
-        </aside>
 
         <aside class="company-detail-side company-detail-side--tasks">
           <section class="dashboard-panel company-upcoming-panel">
@@ -172,6 +162,16 @@
               <span class="dashboard-panel-count" id="companyUpcomingCount"></span>
             </div>
             <div class="dashboard-panel-body dash-scroll" id="companyUpcomingList"></div>
+          </section>
+        </aside>
+        <aside class="company-detail-side company-detail-side--calendar" id="companyDetailSide">
+          <section class="dashboard-panel company-mini-cal-panel">
+            <div class="dashboard-panel-header">
+              <button type="button" class="btn btn-page" id="companyMiniCalPrev" title="Previous month" aria-label="Previous month">‹</button>
+              <span class="dashboard-panel-title company-mini-cal-title" id="companyMiniCalTitle">—</span>
+              <button type="button" class="btn btn-page" id="companyMiniCalNext" title="Next month" aria-label="Next month">›</button>
+            </div>
+            <div class="dashboard-panel-body" id="companyMiniCalBody"></div>
           </section>
         </aside>
       </div>
@@ -184,10 +184,7 @@
       <section class="dashboard-panel dashboard-calendar-panel">
         <div class="dashboard-panel-header dashboard-cal-header">
           <div class="dashboard-cal-legend">
-            <button type="button" class="btn" id="calFilterBtn" aria-haspopup="true" aria-expanded="false">
-              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg>
-              Filter
-            </button>
+            <div class="cal-filter-bar" id="calFilterBar" role="group" aria-label="Filter tasks"></div>
           </div>
           <span class="dashboard-cal-title" id="calTitle">—</span>
           <div class="dashboard-cal-nav">
@@ -263,9 +260,6 @@
   </div>
 </div>
 
-<div id="calFilterPopover" class="column-filter-popover dash-cal-filter-popover" hidden>
-  <div class="column-filter-list" id="calFilterList"></div>
-</div>
 
 <!-- ── Company form (add / edit) ─────────────────────────────── -->
 <div id="companyFormOverlay" class="modal-backdrop">
@@ -383,21 +377,21 @@
 
 <!-- Supabase JS client — auth.js and store.js both depend on the global it exports. -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=20260818-2158"></script>
+<script src="js/config.js?v=20260818-2307"></script>
 <!-- Needs SUPABASE_URL/KEY from config.js and the CDN client above. -->
-<script src="js/auth.js?v=20260818-2158"></script>
-<script src="js/util.js?v=20260818-2158"></script>
-<script src="js/payroll-schedule.js?v=20260818-2158"></script>
-<script src="js/store.js?v=20260818-2158"></script>
-<script src="js/app-shell.js?v=20260818-2158"></script>
-<script src="js/companies-filters.js?v=20260818-2158"></script>
-<script src="js/companies.js?v=20260818-2158"></script>
-<script src="js/company-detail.js?v=20260818-2158"></script>
-<script src="js/company-form.js?v=20260818-2158"></script>
-<script src="js/payroll.js?v=20260818-2158"></script>
+<script src="js/auth.js?v=20260818-2307"></script>
+<script src="js/util.js?v=20260818-2307"></script>
+<script src="js/payroll-schedule.js?v=20260818-2307"></script>
+<script src="js/store.js?v=20260818-2307"></script>
+<script src="js/app-shell.js?v=20260818-2307"></script>
+<script src="js/companies-filters.js?v=20260818-2307"></script>
+<script src="js/companies.js?v=20260818-2307"></script>
+<script src="js/company-detail.js?v=20260818-2307"></script>
+<script src="js/company-form.js?v=20260818-2307"></script>
+<script src="js/payroll.js?v=20260818-2307"></script>
 <!-- After payroll.js — the sales tax section reuses its task checkbox. -->
-<script src="js/sales-tax.js?v=20260818-2158"></script>
-<script src="js/calendar.js?v=20260818-2158"></script>
-<script src="js/main.js?v=20260818-2158"></script>
+<script src="js/sales-tax.js?v=20260818-2307"></script>
+<script src="js/calendar.js?v=20260818-2307"></script>
+<script src="js/main.js?v=20260818-2307"></script>
 </body>
 </html>

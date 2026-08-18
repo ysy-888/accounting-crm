@@ -500,79 +500,77 @@ function renderCalDayPane() {
   applyCalGroupSelection();
 }
 
-// ── Toolbar ──────────────────────────────────────────────────────────────────
+// ── Filter bar ───────────────────────────────────────────────────────────────
+//
+// "All" is the resting state. Picking a kind narrows to just that one; from
+// there each button toggles, so several can be combined. Clearing the last
+// one falls back to All rather than showing an empty calendar, which is
+// never what someone means by unticking their final filter.
 
-function updateCalFilterButton() {
-  const btn = document.getElementById("calFilterBtn");
-  if (btn) btn.classList.toggle("active", calFilterSelection.size < CAL_TASK_KINDS.length || calHideCompleted);
+const CAL_FILTER_OPTIONS = [
+  { key: TASK_KIND_PAYSTUB, label: "Paystub" },
+  { key: TASK_KIND_TAX, label: "Payroll Tax" },
+  { key: TASK_KIND_SALES_TAX, label: "Sales Tax" },
+];
+
+function isCalFilterShowingAll() {
+  return calFilterSelection.size === CAL_TASK_KINDS.length;
 }
 
-function renderCalFilterList() {
-  const list = document.getElementById("calFilterList");
-  if (!list) return;
-
-  const options = [
-    { key: TASK_KIND_PAYSTUB, label: "Paystub tasks" },
-    { key: TASK_KIND_TAX, label: "Payroll tax tasks" },
-    { key: TASK_KIND_SALES_TAX, label: "Sales tax tasks" },
-  ];
-
-  const nodes = options.map(option => {
-    const label = document.createElement("label");
-    label.className = "column-filter-option";
-    const cb = document.createElement("input");
-    cb.type = "checkbox";
-    cb.checked = calFilterSelection.has(option.key);
-    cb.addEventListener("change", () => {
-      if (cb.checked) calFilterSelection.add(option.key);
-      else calFilterSelection.delete(option.key);
-      updateCalFilterButton();
-      renderCalendarGrid();
-      renderCalDayPane();
-      renderUpcomingTasks();
-    });
-    const span = document.createElement("span");
-    span.textContent = option.label;
-    label.append(cb, span);
-    return label;
-  });
-
-  const hide = document.createElement("label");
-  hide.className = "column-filter-option cal-filter-sep";
-  const hideCb = document.createElement("input");
-  hideCb.type = "checkbox";
-  hideCb.checked = calHideCompleted;
-  hideCb.addEventListener("change", () => {
-    calHideCompleted = hideCb.checked;
-    updateCalFilterButton();
-    renderCalendarGrid();
-    renderCalDayPane();
-    renderUpcomingTasks();
-  });
-  const hideSpan = document.createElement("span");
-  hideSpan.textContent = "Hide completed";
-  hide.append(hideCb, hideSpan);
-
-  list.replaceChildren(...nodes, hide);
+function setCalFilterAll() {
+  calFilterSelection = new Set(CAL_TASK_KINDS);
+  applyCalFilterChange();
 }
 
-function toggleCalFilterPopover() {
-  const pop = document.getElementById("calFilterPopover");
-  const btn = document.getElementById("calFilterBtn");
-  if (!pop || !btn) return;
-
-  if (!pop.hidden) {
-    pop.hidden = true;
-    btn.setAttribute("aria-expanded", "false");
-    return;
+function toggleCalFilterKind(key) {
+  if (isCalFilterShowingAll()) {
+    // The first pick out of All narrows to just that kind.
+    calFilterSelection = new Set([key]);
+  } else if (calFilterSelection.has(key)) {
+    calFilterSelection.delete(key);
+    if (calFilterSelection.size === 0) calFilterSelection = new Set(CAL_TASK_KINDS);
+  } else {
+    calFilterSelection.add(key);
   }
+  applyCalFilterChange();
+}
 
-  renderCalFilterList();
-  pop.hidden = false;
-  btn.setAttribute("aria-expanded", "true");
-  const rect = btn.getBoundingClientRect();
-  pop.style.top = `${rect.bottom + 4}px`;
-  pop.style.left = `${Math.min(rect.left, window.innerWidth - pop.offsetWidth - 8)}px`;
+function applyCalFilterChange() {
+  renderCalFilterBar();
+  renderCalendarGrid();
+  renderCalDayPane();
+  renderUpcomingTasks();
+}
+
+function renderCalFilterBar() {
+  const bar = document.getElementById("calFilterBar");
+  if (!bar) return;
+
+  const makeBtn = (label, active, onClick, extraClass = "") => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "cal-filter-btn" + (active ? " is-active" : "") + (extraClass ? " " + extraClass : "");
+    btn.textContent = label;
+    btn.setAttribute("aria-pressed", active ? "true" : "false");
+    btn.addEventListener("click", onClick);
+    return btn;
+  };
+
+  const all = makeBtn("All", isCalFilterShowingAll(), setCalFilterAll);
+
+  const kinds = CAL_FILTER_OPTIONS.map(option => {
+    const active = !isCalFilterShowingAll() && calFilterSelection.has(option.key);
+    const btn = makeBtn(option.label, active, () => toggleCalFilterKind(option.key));
+    btn.dataset.kind = option.key;
+    return btn;
+  });
+
+  const hide = makeBtn("Hide completed", calHideCompleted, () => {
+    calHideCompleted = !calHideCompleted;
+    applyCalFilterChange();
+  }, "cal-filter-btn--hide");
+
+  bar.replaceChildren(all, ...kinds, hide);
 }
 
 // ── Upcoming tasks rail ──────────────────────────────────────────────────────
@@ -681,10 +679,10 @@ function renderUpcomingTasks() {
 // ── Entry points ─────────────────────────────────────────────────────────────
 
 function renderCalendar() {
+  renderCalFilterBar();
   renderCalendarGrid();
   renderCalDayPane();
   renderUpcomingTasks();
-  updateCalFilterButton();
 }
 
 /** Cheap no-op unless the calendar is the active view. */
@@ -703,18 +701,6 @@ function initCalendar() {
   });
 
   document.getElementById("calDayPaneClose")?.addEventListener("click", closeCalDayPane);
-  document.getElementById("calFilterBtn")?.addEventListener("click", e => {
-    e.stopPropagation();
-    toggleCalFilterPopover();
-  });
-
-  document.addEventListener("click", e => {
-    const pop = document.getElementById("calFilterPopover");
-    if (!pop || pop.hidden) return;
-    if (pop.contains(e.target) || e.target.closest("#calFilterBtn")) return;
-    pop.hidden = true;
-    document.getElementById("calFilterBtn")?.setAttribute("aria-expanded", "false");
-  });
 
   window.addEventListener("resize", () => {
     if (getCurrentAppView() === "home") sizeCalRows();

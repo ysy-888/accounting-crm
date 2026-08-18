@@ -4982,3 +4982,97 @@ span.dash-event { cursor: pointer; /* clicking selects the day */ }
     max-height: 380px;
   }
 }
+
+/* ============================================================
+   Task card header — identity left, status right
+   ============================================================ */
+
+/* The company name shares the header row now rather than sitting above it. */
+.payroll-run-company {
+  width: auto;
+  margin-bottom: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Period label and schedule pill ride the right end of the same row. */
+.payroll-run-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.payroll-run-meta .payroll-run-count { margin-left: 0; }
+
+.payroll-run-meta .payroll-run-date {
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.payroll-run-meta .payroll-run-complete-badge { margin-left: 0; }
+
+/* ============================================================
+   Calendar filter bar — inline buttons, no popover
+   ============================================================ */
+
+.cal-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.cal-filter-btn {
+  padding: 4px 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-family: var(--font);
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.cal-filter-btn:hover:not(.is-active) {
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+.cal-filter-btn.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* Each kind's button carries its own family colour when on. */
+.cal-filter-btn[data-kind="paystub"].is-active  { background: #0d6ba8; border-color: #0d6ba8; }
+.cal-filter-btn[data-kind="tax"].is-active      { background: #333f9c; border-color: #333f9c; }
+.cal-filter-btn[data-kind="salesTax"].is-active { background: #8a5310; border-color: #8a5310; }
+
+/* Sits apart — it narrows what's shown rather than picking a kind. */
+.cal-filter-btn--hide { margin-left: 8px; }
+
+/* ============================================================
+   Task list spacing
+   ============================================================ */
+
+/* The day pane stacks cards too — it needs the same breathing room the
+   rail and the company panel already had. */
+#calDayPaneList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px;
+}
+
+#upcomingTasksList,
+#companyUpcomingList,
+.payroll-run-list { gap: 10px; }

@@ -486,11 +486,10 @@ function renderCompanyMiniCalendar(company) {
     titleEl.textContent = new Date(year, month, 1).toLocaleString(undefined, { month: "long", year: "numeric" });
   }
 
-  if (!company.services?.payroll) {
-    body.replaceChildren(miniCalEmptyNode("Enable Payroll to see scheduled runs."));
-    return;
-  }
-
+  // The month grid always draws. buildCompanyTasks already returns nothing
+  // for a service that's switched off, so a company with no scheduled work
+  // simply shows an empty month rather than a message where a calendar
+  // should be.
   const byDate = buildMiniCalEventsByDate(company);
   const today = todayYmd();
 
@@ -552,13 +551,52 @@ function renderCompanyMiniCalendar(company) {
  * The company name line the Home rail puts on every card — the detail page
  * already knows whose runs these are, so it leaves it off.
  */
-function appendCardCompanyName(card, company) {
+function createCardCompanyName(company) {
   const name = document.createElement("button");
   name.type = "button";
   name.className = "payroll-run-company";
   name.textContent = company.name;
   name.addEventListener("click", () => openCompanyDetail(company.id));
-  card.appendChild(name);
+  return name;
+}
+
+/**
+ * The card's one header row: who it belongs to on the left, what it is on
+ * the right. `meta` holds the period label and schedule pill, which sit
+ * opposite the company name rather than stacked under it.
+ */
+function createCardHeader(company, { showCompany, heading, pill, count, complete }) {
+  const head = document.createElement("div");
+  head.className = "payroll-run-head";
+
+  if (showCompany) head.appendChild(createCardCompanyName(company));
+
+  const meta = document.createElement("div");
+  meta.className = "payroll-run-meta";
+
+  if (count) {
+    const el = document.createElement("span");
+    el.className = "payroll-run-count";
+    el.textContent = count;
+    meta.appendChild(el);
+  }
+  if (heading) {
+    const el = document.createElement("span");
+    el.className = "payroll-run-date";
+    el.textContent = heading;
+    meta.appendChild(el);
+  }
+  if (pill) meta.appendChild(pill);
+
+  if (complete) {
+    const badge = document.createElement("span");
+    badge.className = "payroll-run-complete-badge";
+    badge.textContent = "Done";
+    meta.appendChild(badge);
+  }
+
+  head.appendChild(meta);
+  return head;
 }
 
 /**
@@ -590,38 +628,19 @@ function createPayrollRunCard(company, run, { showCompany = false, onChange } = 
   const card = document.createElement("div");
   card.className = "payroll-run" + (complete ? " is-complete" : "");
 
-  if (showCompany) appendCardCompanyName(card, company);
-
-  const head = document.createElement("div");
-  head.className = "payroll-run-head";
-
-  const heading = payrollCardHeading([run.schedule], run.payDate);
-
   const pill = document.createElement("span");
   pill.className = "schedule-pill";
   pill.dataset.schedule = run.schedule;
   pill.dataset.group = "payroll";
   pill.textContent = run.schedule;
 
-  const count = document.createElement("span");
-  count.className = "payroll-run-count";
-  count.textContent = `${run.paystub.employeeCount} employee${run.paystub.employeeCount === 1 ? "" : "s"}`;
-
-  if (heading) {
-    const date = document.createElement("span");
-    date.className = "payroll-run-date";
-    date.textContent = heading;
-    head.appendChild(date);
-  }
-  head.append(pill, count);
-
-  if (complete) {
-    const badge = document.createElement("span");
-    badge.className = "payroll-run-complete-badge";
-    badge.textContent = "Done";
-    head.appendChild(badge);
-  }
-  card.appendChild(head);
+  card.appendChild(createCardHeader(company, {
+    showCompany,
+    heading: payrollCardHeading([run.schedule], run.payDate),
+    pill,
+    count: `${run.paystub.employeeCount} employee${run.paystub.employeeCount === 1 ? "" : "s"}`,
+    complete,
+  }));
 
   const onToggle = onChange ?? defaultCardRefresh(company.id);
   const tasksWrap = document.createElement("div");
@@ -668,40 +687,21 @@ function createBatchedRunCard(company, group, { showCompany = false, onChange } 
   const card = document.createElement("div");
   card.className = "payroll-run payroll-run--batched" + (complete ? " is-complete" : "");
 
-  if (showCompany) appendCardCompanyName(card, company);
-
-  const head = document.createElement("div");
-  head.className = "payroll-run-head";
-
-  // The deposit's own date is already on its sub-task row below, so the
-  // heading names the period instead — or stays out of the way entirely.
-  const heading = payrollCardHeading(group.runs.map(r => r.schedule), group.runs[0].payDate);
-
   const pill = document.createElement("span");
   pill.className = "schedule-pill";
   pill.dataset.schedule = group.tax.depositor;
   pill.dataset.group = "payroll";
   pill.textContent = `${group.tax.depositor} deposit`;
 
-  const count = document.createElement("span");
-  count.className = "payroll-run-count";
-  count.textContent = `${group.runs.length} runs`;
-
-  if (heading) {
-    const date = document.createElement("span");
-    date.className = "payroll-run-date";
-    date.textContent = heading;
-    head.appendChild(date);
-  }
-  head.append(pill, count);
-
-  if (complete) {
-    const badge = document.createElement("span");
-    badge.className = "payroll-run-complete-badge";
-    badge.textContent = "Done";
-    head.appendChild(badge);
-  }
-  card.appendChild(head);
+  card.appendChild(createCardHeader(company, {
+    showCompany,
+    // The deposit's own date is already on its sub-task row below, so the
+    // heading names the period instead — or stays out of the way entirely.
+    heading: payrollCardHeading(group.runs.map(r => r.schedule), group.runs[0].payDate),
+    pill,
+    count: `${group.runs.length} runs`,
+    complete,
+  }));
 
   const onToggle = onChange ?? defaultCardRefresh(company.id);
 
