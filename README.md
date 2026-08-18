@@ -76,8 +76,9 @@ moving to a Supabase-backed Express API is a change to that one file.
 
 ## Payroll
 
-Group-first: one group per schedule, enable the ones a company runs, add
-employees under each. The bi-weekly pay calendar (weekday + first pay date)
+Group-first: one group per schedule. Which schedules a company runs, and
+which services it buys, are both set in **Edit company details** — the
+company page then shows only what is actually in use. The bi-weekly pay calendar (weekday + first pay date)
 lives on the *group*, not the employee, because a company runs one bi-weekly
 cycle that everyone on it shares.
 

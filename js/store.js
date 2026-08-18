@@ -349,16 +349,6 @@ function isPayrollGroupConfigured(group) {
   return Boolean(group.anchorDate);
 }
 
-async function setPayrollGroupEnabled(companyId, schedule, enabled) {
-  const company = getCompanyById(companyId);
-  const group = getPayrollGroup(company, schedule);
-  if (!group) throw new Error(`No ${schedule} group on this company.`);
-  group.enabled = enabled === true;
-  company.payrollSchedules = company.payrollGroups.filter(g => g.enabled).map(g => g.schedule);
-  persistCompanies();
-  return company;
-}
-
 /** Set the bi-weekly cycle: the weekday and the first pay date it runs on. */
 async function setPayrollGroupAnchor(companyId, schedule, anchorDate) {
   const company = getCompanyById(companyId);
@@ -484,16 +474,6 @@ async function updateCompany(id, patch) {
   const company = getCompanyById(id);
   if (!company) throw new Error(`Company ${id} not found.`);
   Object.assign(company, normalizeCompany({ ...company, ...patch }));
-  persistCompanies();
-  return company;
-}
-
-/** Turn one service on or off for a company. */
-async function setCompanyService(id, serviceKey, enabled) {
-  const company = getCompanyById(id);
-  if (!company) throw new Error(`Company ${id} not found.`);
-  if (!SERVICE_KEYS.includes(serviceKey)) throw new Error(`Unknown service '${serviceKey}'.`);
-  company.services[serviceKey] = enabled === true;
   persistCompanies();
   return company;
 }

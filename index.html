@@ -111,9 +111,10 @@
       </div>
 
       <div class="company-detail-header">
-        <div>
+        <div class="company-detail-headline">
           <div class="company-detail-title" id="companyDetailTitle">—</div>
           <div class="company-detail-subtitle" id="companyDetailSubtitle"></div>
+          <div class="company-detail-pills" id="companyDetailPills"></div>
         </div>
         <div class="header-menu-wrap">
           <button type="button" class="btn btn-icon" id="companyDetailMenuBtn" aria-label="Company menu" aria-haspopup="menu" aria-expanded="false">
@@ -131,13 +132,6 @@
           </div>
         </div>
       </div>
-
-      <div class="company-info-grid" id="companyInfoGrid"></div>
-
-      <section class="company-services">
-        <div class="company-section-title">Services</div>
-        <div class="company-services-grid" id="companyServicesGrid"></div>
-      </section>
 
       <div class="company-section-tabs" id="companySectionTabs" role="tablist" aria-label="Company sections"></div>
       <div class="company-section-panel" id="companySectionPanel"></div>
@@ -278,6 +272,12 @@
         <span class="form-label">Sales tax</span>
         <select class="form-input" id="companyFormSalesTax"></select>
       </label>
+
+      <fieldset class="form-field form-field--full form-field--services">
+        <legend class="form-label">Services</legend>
+        <span class="form-hint">Which services this client is signed up for. Enabled services become sections on the company page.</span>
+        <div class="form-services-grid" id="companyFormServices"></div>
+      </fieldset>
     </form>
 
     <div class="modal-footer">

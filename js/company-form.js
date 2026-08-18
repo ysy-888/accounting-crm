@@ -72,6 +72,57 @@ function getSelectedPayrollSchedules() {
     .map(input => input.value);
 }
 
+/**
+ * Service switches. These live here rather than on the company page so the
+ * page itself only shows what the client actually buys.
+ */
+function fillServiceSwitches() {
+  const grid = document.getElementById("companyFormServices");
+  if (!grid) return;
+
+  grid.replaceChildren(...SERVICES.map(service => {
+    const row = document.createElement("div");
+    row.className = "form-service";
+    row.dataset.service = service.key;
+
+    const text = document.createElement("div");
+    text.className = "form-service-text";
+    const name = document.createElement("span");
+    name.className = "form-service-name";
+    name.textContent = service.label;
+    const hint = document.createElement("span");
+    hint.className = "form-service-hint";
+    hint.textContent = service.hint;
+    text.append(name, hint);
+
+    const label = document.createElement("label");
+    label.className = "switch";
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.name = "service";
+    input.value = service.key;
+    input.setAttribute("aria-label", service.label);
+    const track = document.createElement("span");
+    track.className = "switch-track";
+    const thumb = document.createElement("span");
+    thumb.className = "switch-thumb";
+    label.append(input, track, thumb);
+
+    input.addEventListener("change", () => row.classList.toggle("is-on", input.checked));
+
+    row.append(text, label);
+    return row;
+  }));
+}
+
+function getSelectedServices() {
+  const services = {};
+  SERVICE_KEYS.forEach(key => { services[key] = false; });
+  document.querySelectorAll('#companyFormServices input[name="service"]:checked')
+    .forEach(input => { services[input.value] = true; });
+  return services;
+}
+
 // ── Open / close ─────────────────────────────────────────────────────────────
 
 function setCompanyFormMessage(text, type = "") {
@@ -99,6 +150,7 @@ function openCompanyForm(companyId = null) {
 
   fillOwnerSelect();
   fillPayrollCheckboxes();
+  fillServiceSwitches();
   fillScheduleSelect("companyFormPayrollTax", PAYROLL_TAX_SCHEDULES, "— None —");
   fillScheduleSelect("companyFormSalesTax", SALES_TAX_SCHEDULES, "— None —");
 
@@ -119,6 +171,13 @@ function openCompanyForm(companyId = null) {
   const selected = new Set(company?.payrollSchedules ?? []);
   document.querySelectorAll('#companyFormPayroll input[name="payrollSchedule"]').forEach(input => {
     input.checked = selected.has(input.value);
+  });
+
+  // New companies start with every service on — the common case is a client
+  // buying the full package, and unticking is quicker than ticking five.
+  document.querySelectorAll('#companyFormServices input[name="service"]').forEach(input => {
+    input.checked = company ? company.services[input.value] === true : true;
+    input.closest(".form-service")?.classList.toggle("is-on", input.checked);
   });
 
   clearCompanyFormErrors();
@@ -156,6 +215,7 @@ async function saveCompanyForm() {
     payrollSchedules: getSelectedPayrollSchedules(),
     payrollTax: document.getElementById("companyFormPayrollTax")?.value ?? "",
     salesTax: document.getElementById("companyFormSalesTax")?.value ?? "",
+    services: getSelectedServices(),
   };
 
   const saveBtn = document.getElementById("companyFormSaveBtn");

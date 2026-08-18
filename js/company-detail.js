@@ -9,98 +9,47 @@
 let currentCompanyId = null;
 let currentSectionKey = null;
 
-/** Fields mirrored from the Companies table, in table order. */
-function getCompanyInfoFields(company) {
-  return [
-    { label: "Company Name", value: company.name },
-    { label: "Owner", value: getCompanyOwnerName(company) },
-    { label: "Location", value: company.location },
-    { label: "Payroll", value: (company.payrollSchedules ?? []).join(", ") },
-    { label: "Payroll Tax", value: company.payrollTax },
-    { label: "Sales Tax", value: company.salesTax },
-  ];
-}
+/**
+ * The schedule columns from the Companies table, as the same coloured pills,
+ * in the header card. Name / owner / location are already the title and
+ * subtitle, so they aren't repeated.
+ */
+function renderCompanyHeaderPills(company) {
+  const wrap = document.getElementById("companyDetailPills");
+  if (!wrap) return;
 
-function renderCompanyInfoGrid(company) {
-  const grid = document.getElementById("companyInfoGrid");
-  if (!grid) return;
+  const groups = [
+    { label: "Payroll", values: company.payrollSchedules ?? [] },
+    { label: "Payroll Tax", values: company.payrollTax ? [company.payrollTax] : [] },
+    { label: "Sales Tax", values: company.salesTax ? [company.salesTax] : [] },
+  ].filter(group => group.values.length > 0);
 
-  grid.replaceChildren(...getCompanyInfoFields(company).map(field => {
-    const cell = document.createElement("div");
-    cell.className = "company-info-field";
+  if (groups.length === 0) {
+    wrap.replaceChildren();
+    return;
+  }
+
+  wrap.replaceChildren(...groups.map(group => {
+    const item = document.createElement("div");
+    item.className = "company-pill-group";
 
     const label = document.createElement("span");
-    label.className = "company-info-label";
-    label.textContent = field.label;
+    label.className = "company-pill-label";
+    // The same value can appear under two headings (Monthly payroll vs
+    // monthly deposits), so each cluster is labelled.
+    label.textContent = group.label;
+    item.appendChild(label);
 
-    const value = document.createElement("div");
-    const empty = isEmptyValue(field.value);
-    value.className = "company-info-value" + (empty ? " is-empty" : "");
-    value.textContent = empty ? EMPTY_DISPLAY : field.value;
+    group.values.forEach(value => {
+      const pill = document.createElement("span");
+      pill.className = "schedule-pill";
+      pill.dataset.schedule = value;
+      pill.textContent = value;
+      item.appendChild(pill);
+    });
 
-    cell.append(label, value);
-    return cell;
+    return item;
   }));
-}
-
-// ── Service toggles ──────────────────────────────────────────────────────────
-
-function createServiceCard(company, service) {
-  const card = document.createElement("div");
-  card.className = "service-card" + (company.services[service.key] ? " is-on" : "");
-  card.dataset.service = service.key;
-
-  const text = document.createElement("div");
-  text.className = "service-card-text";
-
-  const name = document.createElement("span");
-  name.className = "service-card-name";
-  name.textContent = service.label;
-
-  const hint = document.createElement("span");
-  hint.className = "service-card-hint";
-  hint.textContent = service.hint;
-
-  text.append(name, hint);
-
-  const label = document.createElement("label");
-  label.className = "switch";
-
-  const input = document.createElement("input");
-  input.type = "checkbox";
-  input.checked = company.services[service.key] === true;
-  input.setAttribute("aria-label", `${service.label} service for ${company.name}`);
-
-  const track = document.createElement("span");
-  track.className = "switch-track";
-  const thumb = document.createElement("span");
-  thumb.className = "switch-thumb";
-
-  input.addEventListener("change", async () => {
-    const enabled = input.checked;
-    card.classList.toggle("is-on", enabled);
-    try {
-      await setCompanyService(company.id, service.key, enabled);
-      renderCompanySectionTabs(company);
-      renderCompaniesTable();
-      showIndicator(`${service.label} ${enabled ? "enabled" : "disabled"}`, "success");
-    } catch (err) {
-      // Roll the switch back so the UI matches what was actually stored.
-      input.checked = !enabled;
-      card.classList.toggle("is-on", !enabled);
-      showIndicator(err.message || "Could not save service.", "error");
-    }
-  });
-
-  label.append(input, track, thumb);
-  card.append(text, label);
-  return card;
-}
-
-function renderCompanyServices(company) {
-  const grid = document.getElementById("companyServicesGrid");
-  if (!grid) return;
-  grid.replaceChildren(...SERVICES.map(service => createServiceCard(company, service)));
 }
 
 // ── Section tabs ─────────────────────────────────────────────────────────────
@@ -162,7 +111,7 @@ function renderCompanySectionPanel(company) {
 
   if (!service) {
     title.textContent = "No services enabled";
-    text.textContent = `Turn on a service above to start tracking work for ${company.name}.`;
+    text.textContent = `Open the menu above and pick this client's services to start tracking work for ${company.name}.`;
   } else {
     title.textContent = service.label;
     text.textContent = `${service.hint} This section is next up to be built out.`;
@@ -199,8 +148,7 @@ function openCompanyDetail(companyId) {
     });
   }
 
-  renderCompanyInfoGrid(company);
-  renderCompanyServices(company);
+  renderCompanyHeaderPills(company);
   renderCompanySectionTabs(company);
 
   switchAppView("company");

@@ -10,81 +10,28 @@
  * tasks: Paystub and Tax Payment.
  */
 
-/** How far ahead the upcoming-runs list looks. */
+/** How far ahead the upcoming list looks. */
 const PAYROLL_UPCOMING_DAYS = 60;
-
-function describePaySchedule(group) {
-  switch (group.schedule) {
-    case "Monthly":
-      return "Pays the last day of every month.";
-    case "Semi-Monthly":
-      return "Pays the 15th and the last day of every month.";
-    case "Bi-Weekly":
-      if (!group.anchorDate) return "Every other week — set the first pay date to start the cycle.";
-      return `Every other ${WEEKDAY_NAMES[group.weekday]}, from ${formatTaskDate(group.anchorDate)}.`;
-    default:
-      return "";
-  }
-}
 
 // ── Group card ───────────────────────────────────────────────────────────────
 
+/**
+ * Only enabled groups get a card. Which schedules a company runs is set in
+ * Edit company details, so there is no toggle here.
+ */
 function createPayrollGroupCard(company, group) {
   const card = document.createElement("section");
-  card.className = "payroll-group" + (group.enabled ? " is-on" : "");
+  card.className = "payroll-group is-on";
   card.dataset.schedule = group.schedule;
 
-  // Header: name + description + enable switch
   const head = document.createElement("div");
   head.className = "payroll-group-head";
 
-  const text = document.createElement("div");
   const name = document.createElement("div");
   name.className = "payroll-group-name";
   name.textContent = group.schedule;
-  const desc = document.createElement("div");
-  desc.className = "payroll-group-desc";
-  desc.textContent = describePaySchedule(group);
-  text.append(name, desc);
-
-  const switchLabel = document.createElement("label");
-  switchLabel.className = "switch";
-  const toggle = document.createElement("input");
-  toggle.type = "checkbox";
-  toggle.checked = group.enabled;
-  toggle.setAttribute("aria-label", `${group.schedule} payroll for ${company.name}`);
-  const track = document.createElement("span");
-  track.className = "switch-track";
-  const thumb = document.createElement("span");
-  thumb.className = "switch-thumb";
-  switchLabel.append(toggle, track, thumb);
-
-  toggle.addEventListener("change", async () => {
-    try {
-      await setPayrollGroupEnabled(company.id, group.schedule, toggle.checked);
-      renderPayrollSection(getCompanyById(company.id));
-      renderCompaniesTable();
-      showIndicator(`${group.schedule} payroll ${toggle.checked ? "enabled" : "disabled"}`, "success");
-    } catch (err) {
-      toggle.checked = !toggle.checked;
-      showIndicator(err.message || "Could not save.", "error");
-    }
-  });
-
-  head.append(text, switchLabel);
+  head.appendChild(name);
   card.appendChild(head);
-
-  if (!group.enabled) {
-    // Keep disabled groups collapsed — their employees are preserved but the
-    // detail is noise until the schedule is actually in use.
-    if (group.employees.length) {
-      const note = document.createElement("div");
-      note.className = "payroll-group-note";
-      note.textContent = `${group.employees.length} employee${group.employees.length === 1 ? "" : "s"} kept on this schedule.`;
-      card.appendChild(note);
-    }
-    return card;
-  }
 
   if (group.schedule === "Bi-Weekly") card.appendChild(createBiWeeklyAnchorRow(company, group));
   card.appendChild(createEmployeeList(company, group));
@@ -176,27 +123,31 @@ function createEmployeeRow(company, group, employee) {
   actions.className = "payroll-employee-actions";
 
   // Moving between schedules is common enough (someone goes salaried) to be
-  // inline rather than buried in an edit form.
-  const move = document.createElement("select");
-  move.className = "payroll-employee-move";
-  move.setAttribute("aria-label", `Move ${employee.name} to another schedule`);
-  PAYROLL_SCHEDULES.forEach(schedule => {
-    const option = document.createElement("option");
-    option.value = schedule;
-    option.textContent = schedule;
-    option.selected = schedule === group.schedule;
-    move.appendChild(option);
-  });
-  move.addEventListener("change", async () => {
-    try {
-      await moveEmployee(company.id, group.schedule, move.value, employee.id);
-      renderPayrollSection(getCompanyById(company.id));
-      renderCompaniesTable();
-      showIndicator(`${employee.name} moved to ${move.value}`, "success");
-    } catch (err) {
-      showIndicator(err.message || "Could not move employee.", "error");
-    }
-  });
+  // inline. Only schedules the company actually runs are offered — adding a
+  // schedule happens in Edit company details.
+  const targets = getEnabledPayrollGroups(company).map(g => g.schedule);
+  const move = targets.length > 1 ? document.createElement("select") : null;
+  if (move) {
+    move.className = "payroll-employee-move";
+    move.setAttribute("aria-label", `Move ${employee.name} to another schedule`);
+    targets.forEach(schedule => {
+      const option = document.createElement("option");
+      option.value = schedule;
+      option.textContent = schedule;
+      option.selected = schedule === group.schedule;
+      move.appendChild(option);
+    });
+    move.addEventListener("change", async () => {
+      try {
+        await moveEmployee(company.id, group.schedule, move.value, employee.id);
+        renderPayrollSection(getCompanyById(company.id));
+        renderCompaniesTable();
+        showIndicator(`${employee.name} moved to ${move.value}`, "success");
+      } catch (err) {
+        showIndicator(err.message || "Could not move employee.", "error");
+      }
+    });
+  }
 
   const remove = document.createElement("button");
   remove.type = "button";
@@ -215,7 +166,8 @@ function createEmployeeRow(company, group, employee) {
     }
   });
 
-  actions.append(move, remove);
+  if (move) actions.appendChild(move);
+  actions.appendChild(remove);
   item.append(name, actions);
   return item;
 }
@@ -309,7 +261,7 @@ function renderUpcomingRuns(company) {
 
   const title = document.createElement("div");
   title.className = "company-section-title";
-  title.textContent = `Upcoming — next ${PAYROLL_UPCOMING_DAYS} days`;
+  title.textContent = "Upcoming";
   section.appendChild(title);
 
   const from = todayYmd();
@@ -321,8 +273,8 @@ function renderUpcomingRuns(company) {
     empty.className = "payroll-employees-empty";
     const configured = getEnabledPayrollGroups(company).filter(isPayrollGroupConfigured);
     empty.textContent = configured.length === 0
-      ? "Enable a payroll schedule above to generate the run calendar."
-      : "No payroll runs fall in this window.";
+      ? "Set a pay schedule to generate the run calendar."
+      : "Nothing due in the next 60 days.";
     section.appendChild(empty);
     return section;
   }
@@ -382,31 +334,33 @@ function renderPayrollSection(company) {
   const wrap = document.createElement("div");
   wrap.className = "payroll-section";
 
-  const depositor = String(company.payrollTax ?? "").trim();
-  const banner = document.createElement("div");
-  banner.className = "payroll-depositor";
-  if (depositor) {
-    banner.innerHTML = `<strong>${escapeHtml(depositor)}</strong> tax depositor — ` +
-      (depositor === "Monthly"
-        ? "deposits are due the 15th of the following month."
-        : "deposits are due the Friday or Wednesday after each pay date.");
-  } else {
-    banner.classList.add("is-warning");
-    banner.textContent = "No payroll tax schedule set — edit the company details to pick Monthly or Semi-Weekly, or tax tasks won't be generated.";
+  // Without a depositor there is no rule to derive deposit dates from, so no
+  // tax tasks get generated — worth saying, since it is silent otherwise.
+  if (!String(company.payrollTax ?? "").trim()) {
+    const banner = document.createElement("div");
+    banner.className = "payroll-depositor is-warning";
+    banner.textContent = "No payroll tax schedule set — pick Monthly or Semi-Weekly in Edit company details, or no tax payment tasks will be generated.";
+    wrap.appendChild(banner);
   }
-  wrap.appendChild(banner);
+
+  const enabled = getEnabledPayrollGroups(company);
 
   const groupsTitle = document.createElement("div");
   groupsTitle.className = "company-section-title";
   groupsTitle.textContent = "Pay schedules";
   wrap.appendChild(groupsTitle);
 
-  const groups = document.createElement("div");
-  groups.className = "payroll-groups";
-  (company.payrollGroups ?? []).forEach(group => {
-    groups.appendChild(createPayrollGroupCard(company, group));
-  });
-  wrap.appendChild(groups);
+  if (enabled.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "payroll-employees-empty";
+    empty.textContent = "No pay schedules yet — add one in Edit company details.";
+    wrap.appendChild(empty);
+  } else {
+    const groups = document.createElement("div");
+    groups.className = "payroll-groups";
+    enabled.forEach(group => groups.appendChild(createPayrollGroupCard(company, group)));
+    wrap.appendChild(groups);
+  }
 
   wrap.appendChild(renderUpcomingRuns(company));
   panel.replaceChildren(wrap);
