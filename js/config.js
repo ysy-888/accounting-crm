@@ -34,8 +34,54 @@ const PAYROLL_SCHEDULES = ["Monthly", "Semi-Monthly", "Bi-Weekly"];
  */
 const PAYROLL_TAX_SCHEDULES = ["Monthly", "Semi-Weekly"];
 
-/** Sales tax filing cadence. Y6 = every 6 months, Y12 = annual. */
-const SALES_TAX_SCHEDULES = ["Quarterly", "Y6", "Y12"];
+/**
+ * Sales tax filing cadence.
+ *   Pre-Payment — a payment every month
+ *   Quarterly   — every calendar quarter
+ *   Y6          — every 6 months
+ *   Y12         — annual
+ *
+ * Listed shortest-period first, which is also the cadence order the schedule
+ * columns sort by.
+ */
+const SALES_TAX_SCHEDULES = ["Pre-Payment", "Quarterly", "Y6", "Y12"];
+
+/**
+ * Short forms for the narrow places — table cells, calendar chips, header
+ * pills. Anything without an entry is already short enough to use as-is.
+ */
+const SCHEDULE_ABBREVIATIONS = {
+  "Pre-Payment": "PP",
+};
+
+/** The narrow-space label for a schedule value. */
+function getScheduleAbbreviation(value) {
+  const s = String(value ?? "").trim();
+  return SCHEDULE_ABBREVIATIONS[s] ?? s;
+}
+
+/**
+ * States the practice files sales tax in, and when each one's payment is due.
+ *
+ * `dueDay` is the day of the month *after* the period being filed for — CA
+ * wants it by the 24th, Minnesota by the 20th. Weekend handling is the same
+ * as everywhere else in the app: the task moves back to the Friday before.
+ */
+const STATES = [
+  { code: "CA", name: "California", salesTaxDueDay: 24 },
+  { code: "MN", name: "Minnesota", salesTaxDueDay: 20 },
+];
+
+const STATE_CODES = STATES.map(s => s.code);
+
+function getStateMeta(code) {
+  const s = String(code ?? "").trim().toUpperCase();
+  return STATES.find(state => state.code === s) ?? null;
+}
+
+function getStateName(code) {
+  return getStateMeta(code)?.name ?? "";
+}
 
 /**
  * The five service areas a company can be signed up for. `key` is what is

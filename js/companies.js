@@ -59,7 +59,7 @@ function getCompanyColumnValue(company, col) {
   switch (col) {
     case "Company":     return company.name;
     case "Owner":       return getCompanyOwnerName(company);
-    case "Location":    return company.location;
+    case "Location":    return getCompanyLocationDisplay(company);
     case "Payroll":
       return isCompanyColumnServiceActive(company, col)
         ? (company.payrollSchedules ?? []).join(", ")
@@ -288,7 +288,7 @@ function initCompaniesPagination() {
 
 // ── Render ───────────────────────────────────────────────────────────────────
 
-function renderScheduleCell(td, values) {
+function renderScheduleCell(td, values, group = "") {
   const list = (Array.isArray(values) ? values : [values])
     .map(v => String(v ?? "").trim())
     .filter(Boolean);
@@ -303,7 +303,14 @@ function renderScheduleCell(td, values) {
     const pill = document.createElement("span");
     pill.className = "schedule-pill";
     pill.dataset.schedule = value;
-    mountSearchHighlightedText(pill, value);
+    // "Monthly" means different things under payroll and sales tax, so the
+    // colour comes from the pair, not the value alone.
+    if (group) pill.dataset.group = group;
+    // Column widths are tight, so long cadences show their short form with
+    // the full name on hover.
+    const short = getScheduleAbbreviation(value);
+    if (short !== value) pill.title = value;
+    mountSearchHighlightedText(pill, short);
     return pill;
   }));
 }
@@ -351,7 +358,7 @@ function renderCompaniesTable() {
       if (col === "Services") {
         renderServicesCell(td, company);
       } else if (getScheduleOptionsForColumn(col)) {
-        renderScheduleCell(td, getCompanyColumnValues(company, col));
+        renderScheduleCell(td, getCompanyColumnValues(company, col), COMPANY_COLUMN_SERVICE[col]);
       } else {
         mountSearchHighlightedText(td, getCompanyColumnValue(company, col));
       }

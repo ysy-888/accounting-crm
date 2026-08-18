@@ -9,11 +9,12 @@ async function bootApp() {
   initCompanyDetail();
   initCompanyForm();
   initCalendar();
+  initCompanyMiniCal();
 
   try {
     await loadAppData();
     applyCompanyFilters();
-    switchAppView("companies");
+    switchAppView("home");
   } catch (err) {
     showIndicator(err.message || "Failed to load data.", "error");
   } finally {

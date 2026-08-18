@@ -8,23 +8,189 @@
 let companyFormMode = "create";
 let companyFormCompanyId = null;
 
-// ── Field builders ───────────────────────────────────────────────────────────
+// ── Owner combobox ───────────────────────────────────────────────────────────
 
-function fillOwnerSelect() {
-  const select = document.getElementById("companyFormOwner");
-  if (!select) return;
+/**
+ * Owner is a searchable combobox rather than a select: type to filter the
+ * owners on file, or type a name nobody has yet and it becomes a new owner
+ * when the company is saved. Saving resolves the typed text, so the id is
+ * looked up (or created) at save time rather than tracked while typing.
+ */
+let ownerComboActiveIndex = -1;
+let ownerComboMatches = [];
 
-  const blank = document.createElement("option");
-  blank.value = "";
-  blank.textContent = "— Unassigned —";
-
-  select.replaceChildren(blank, ...getAllOwners().map(owner => {
-    const option = document.createElement("option");
-    option.value = owner.id;
-    option.textContent = owner.name;
-    return option;
-  }));
+function getOwnerComboInput() {
+  return document.getElementById("companyFormOwner");
 }
+
+function getOwnerComboQuery() {
+  return (getOwnerComboInput()?.value ?? "").trim();
+}
+
+/** Owners whose name contains the query; everything when the box is empty. */
+function findOwnerMatches(query) {
+  const needle = query.toLowerCase();
+  const owners = [...getAllOwners()].sort((a, b) => a.name.localeCompare(b.name));
+  if (!needle) return owners;
+  return owners.filter(owner => owner.name.toLowerCase().includes(needle));
+}
+
+function updateOwnerComboHint() {
+  const hint = document.getElementById("companyFormOwnerHint");
+  if (!hint) return;
+  const query = getOwnerComboQuery();
+  const isNew = query && !findOwnerByName(query);
+  hint.textContent = isNew ? `“${query}” is new — it will be added as an owner.` : "";
+  hint.classList.toggle("is-visible", Boolean(isNew));
+}
+
+function closeOwnerComboList() {
+  const list = document.getElementById("companyFormOwnerList");
+  if (list) list.hidden = true;
+  getOwnerComboInput()?.setAttribute("aria-expanded", "false");
+  ownerComboActiveIndex = -1;
+}
+
+function applyOwnerComboActive() {
+  const list = document.getElementById("companyFormOwnerList");
+  if (!list) return;
+  [...list.children].forEach((option, i) => {
+    option.classList.toggle("is-active", i === ownerComboActiveIndex);
+    option.setAttribute("aria-selected", i === ownerComboActiveIndex ? "true" : "false");
+  });
+}
+
+function chooseOwnerComboOption(index) {
+  const option = ownerComboMatches[index];
+  if (!option) return;
+  const input = getOwnerComboInput();
+  if (input) input.value = option.name;
+  closeOwnerComboList();
+  updateOwnerComboHint();
+}
+
+/**
+ * The list is the matching owners, plus a "create" row whenever the typed name
+ * isn't one of them — so adding an owner is the same gesture as picking one.
+ */
+function renderOwnerComboList() {
+  const list = document.getElementById("companyFormOwnerList");
+  const input = getOwnerComboInput();
+  if (!list || !input) return;
+
+  const query = getOwnerComboQuery();
+  const owners = findOwnerMatches(query);
+  ownerComboMatches = owners.map(owner => ({ name: owner.name, isNew: false }));
+  if (query && !findOwnerByName(query)) {
+    ownerComboMatches.push({ name: query, isNew: true });
+  }
+
+  if (ownerComboMatches.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "combo-empty";
+    empty.textContent = "No owners on file yet.";
+    list.replaceChildren(empty);
+  } else {
+    list.replaceChildren(...ownerComboMatches.map((match, i) => {
+      const option = document.createElement("div");
+      option.className = "combo-option" + (match.isNew ? " combo-option--new" : "");
+      option.setAttribute("role", "option");
+      option.setAttribute("aria-selected", "false");
+
+      const label = document.createElement("span");
+      label.className = "combo-option-label";
+      label.textContent = match.isNew ? `Add “${match.name}”` : match.name;
+      option.appendChild(label);
+
+      if (match.isNew) {
+        const tag = document.createElement("span");
+        tag.className = "combo-option-tag";
+        tag.textContent = "New";
+        option.appendChild(tag);
+      }
+
+      // mousedown, not click — blur would close the list first.
+      option.addEventListener("mousedown", e => {
+        e.preventDefault();
+        chooseOwnerComboOption(i);
+      });
+      option.addEventListener("mouseenter", () => {
+        ownerComboActiveIndex = i;
+        applyOwnerComboActive();
+      });
+      return option;
+    }));
+  }
+
+  list.hidden = false;
+  input.setAttribute("aria-expanded", "true");
+  ownerComboActiveIndex = ownerComboMatches.length ? 0 : -1;
+  applyOwnerComboActive();
+}
+
+function initOwnerCombo() {
+  const input = getOwnerComboInput();
+  const list = document.getElementById("companyFormOwnerList");
+  if (!input || !list) return;
+
+  input.addEventListener("focus", renderOwnerComboList);
+  input.addEventListener("input", () => {
+    renderOwnerComboList();
+    updateOwnerComboHint();
+  });
+  input.addEventListener("blur", () => {
+    closeOwnerComboList();
+    updateOwnerComboHint();
+  });
+
+  // Enter picks the highlighted option instead of submitting the form, but
+  // only while the list is open.
+  input.addEventListener("keydown", e => {
+    const open = !list.hidden;
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      if (!open) {
+        renderOwnerComboList();
+        return;
+      }
+      const step = e.key === "ArrowDown" ? 1 : -1;
+      const count = ownerComboMatches.length;
+      if (!count) return;
+      ownerComboActiveIndex = (ownerComboActiveIndex + step + count) % count;
+      applyOwnerComboActive();
+      return;
+    }
+    if (e.key === "Enter" && open && ownerComboActiveIndex >= 0) {
+      e.preventDefault();
+      e.stopPropagation();
+      chooseOwnerComboOption(ownerComboActiveIndex);
+      return;
+    }
+    if (e.key === "Escape" && open) {
+      e.stopPropagation();
+      closeOwnerComboList();
+    }
+  });
+}
+
+/** Blank, an existing owner, or a brand-new one created on the spot. */
+async function resolveOwnerIdFromCombo() {
+  const query = getOwnerComboQuery();
+  if (!query) return "";
+  const existing = findOwnerByName(query);
+  if (existing) return existing.id;
+  const created = await createOwner({ name: query });
+  return created.id;
+}
+
+function setOwnerComboFromCompany(company) {
+  const input = getOwnerComboInput();
+  if (input) input.value = getOwnerById(company?.ownerId)?.name ?? "";
+  closeOwnerComboList();
+  updateOwnerComboHint();
+}
+
+// ── Field builders ───────────────────────────────────────────────────────────
 
 /** Payroll runs several schedules at once, so these are real checkboxes. */
 function fillPayrollCheckboxes() {
@@ -34,6 +200,8 @@ function fillPayrollCheckboxes() {
   row.replaceChildren(...PAYROLL_SCHEDULES.map(schedule => {
     const label = document.createElement("label");
     label.className = "form-check";
+    label.dataset.schedule = schedule;
+    label.dataset.group = "payroll";
 
     const input = document.createElement("input");
     input.type = "checkbox";
@@ -58,11 +226,42 @@ function getSelectedPayrollSchedules() {
 }
 
 /**
+ * State is its own field rather than part of the location text because the
+ * sales tax due date is derived from it — see js/sales-tax.js.
+ */
+function fillStateSelect() {
+  const select = document.getElementById("companyFormState");
+  if (!select) return;
+
+  const blank = document.createElement("option");
+  blank.value = "";
+  blank.textContent = "— State —";
+
+  select.replaceChildren(blank, ...STATES.map(state => {
+    const option = document.createElement("option");
+    option.value = state.code;
+    option.textContent = state.code;
+    option.title = state.name;
+    return option;
+  }));
+}
+
+/** Spell out the due-date rule the chosen state implies. */
+function updateStateHint() {
+  const hint = document.getElementById("companyFormStateHint");
+  if (!hint) return;
+  const meta = getStateMeta(document.getElementById("companyFormState")?.value);
+  hint.textContent = meta
+    ? `${meta.name} — sales tax due the ${meta.salesTaxDueDay}th of the month after each period.`
+    : "";
+}
+
+/**
  * Single-choice settings render as a small button group rather than a select —
  * there are only two or three options and they read better laid out.
  * Clicking the active button clears it.
  */
-function fillToggleButtons(containerId, options, ariaLabel) {
+function fillToggleButtons(containerId, options, ariaLabel, group = "") {
   const row = document.getElementById(containerId);
   if (!row) return;
   row.setAttribute("role", "group");
@@ -73,6 +272,12 @@ function fillToggleButtons(containerId, options, ariaLabel) {
     btn.type = "button";
     btn.className = "form-toggle-btn";
     btn.dataset.value = value;
+    // Colour comes from the schedule/group pair — "Monthly" is a payroll
+    // cadence in one row and a sales tax one in another.
+    if (group) {
+      btn.dataset.group = group;
+      btn.dataset.schedule = value;
+    }
     btn.textContent = value;
     btn.setAttribute("aria-pressed", "false");
     btn.addEventListener("click", () => {
@@ -192,11 +397,11 @@ function openCompanyForm(companyId = null) {
   companyFormMode = company ? "edit" : "create";
   companyFormCompanyId = company?.id ?? null;
 
-  fillOwnerSelect();
   fillPayrollCheckboxes();
   fillServiceSwitches();
-  fillToggleButtons("companyFormPayrollTax", PAYROLL_TAX_SCHEDULES, "Payroll tax deposit schedule");
-  fillToggleButtons("companyFormSalesTax", SALES_TAX_SCHEDULES, "Sales tax filing schedule");
+  fillStateSelect();
+  fillToggleButtons("companyFormPayrollTax", PAYROLL_TAX_SCHEDULES, "Payroll tax deposit schedule", "payroll");
+  fillToggleButtons("companyFormSalesTax", SALES_TAX_SCHEDULES, "Sales tax filing schedule", "salesTax");
 
   const title = document.getElementById("companyFormTitle");
   if (title) title.textContent = company ? "Edit company details" : "Add company";
@@ -205,8 +410,10 @@ function openCompanyForm(companyId = null) {
   if (nameInput) nameInput.value = company?.name ?? "";
   const locationInput = document.getElementById("companyFormLocation");
   if (locationInput) locationInput.value = company?.location ?? "";
-  const ownerSelect = document.getElementById("companyFormOwner");
-  if (ownerSelect) ownerSelect.value = company?.ownerId ?? "";
+  const stateSelect = document.getElementById("companyFormState");
+  if (stateSelect) stateSelect.value = company?.state ?? "";
+  updateStateHint();
+  setOwnerComboFromCompany(company);
 
   setToggleButtonValue("companyFormPayrollTax", company?.payrollTax ?? "");
   setToggleButtonValue("companyFormSalesTax", company?.salesTax ?? "");
@@ -252,10 +459,19 @@ async function saveCompanyForm() {
     return;
   }
 
+  let ownerId;
+  try {
+    ownerId = await resolveOwnerIdFromCombo();
+  } catch (err) {
+    setCompanyFormMessage(err.message || "Could not add that owner.", "error");
+    return;
+  }
+
   const fields = {
     name,
-    ownerId: document.getElementById("companyFormOwner")?.value ?? "",
+    ownerId,
     location: (document.getElementById("companyFormLocation")?.value ?? "").trim(),
+    state: document.getElementById("companyFormState")?.value ?? "",
     payrollSchedules: getSelectedPayrollSchedules(),
     payrollTax: getToggleButtonValue("companyFormPayrollTax"),
     salesTax: getToggleButtonValue("companyFormSalesTax"),
@@ -340,6 +556,7 @@ function initCompanyDetailMenu() {
 
 function initCompanyForm() {
   initCompanyDetailMenu();
+  initOwnerCombo();
 
   document.getElementById("addCompanyBtn")?.addEventListener("click", () => openCompanyForm());
   document.getElementById("companyFormSaveBtn")?.addEventListener("click", saveCompanyForm);
@@ -347,6 +564,7 @@ function initCompanyForm() {
   document.getElementById("companyFormCloseBtn")?.addEventListener("click", closeCompanyForm);
 
   document.getElementById("companyFormName")?.addEventListener("input", clearCompanyFormErrors);
+  document.getElementById("companyFormState")?.addEventListener("change", updateStateHint);
 
   // Turning a service off greys out everything nested under it.
   document.querySelectorAll('.service-block input[name="service"]').forEach(toggle => {

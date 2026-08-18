@@ -2624,12 +2624,15 @@ td.n41-status-mismatch,
   color: #4b5563;
 }
 
-.schedule-pill[data-schedule="Monthly"]      { background: #e6f1fb; color: #185fa5; }
-.schedule-pill[data-schedule="Bi-Monthly"]   { background: #e1f5ee; color: #0f6e56; }
-.schedule-pill[data-schedule="Semi-Weekly"]  { background: #faeeda; color: #854f0b; }
-.schedule-pill[data-schedule="Quarterly"]    { background: #eaf3de; color: #3b6d11; }
-.schedule-pill[data-schedule="Y6"]           { background: #fbeaf0; color: #993556; }
-.schedule-pill[data-schedule="Y12"]          { background: #f1e9fb; color: #6b3fa0; }
+/* Colours come from the schedule-group tokens further down the file; the
+   group decides the family, the value decides the hue within it. */
+.schedule-pill[data-group="payroll"],
+.schedule-pill[data-group="salesTax"] {
+  background: var(--sched-bg);
+  color: var(--sched-fg);
+}
+
+/* Ungrouped pills (older call sites) keep the plain neutral chip. */
 
 /* Service dots in the list row */
 .service-dots {
@@ -2660,10 +2663,15 @@ td.n41-status-mismatch,
 .company-detail {
   flex: 1;
   min-height: 0;
-  overflow-y: auto;
+  overflow: hidden; /* the page never scrolls; the panel and sidebar scroll internally */
+  display: flex;
+  flex-direction: column;
   background: var(--bg);
   animation: company-detail-in 160ms ease-out;
 }
+
+/* display:flex above wins over the [hidden] UA style unless restated here. */
+.company-detail[hidden] { display: none !important; }
 
 @keyframes company-detail-in {
   from { opacity: 0; transform: translateY(6px); }
@@ -2671,17 +2679,48 @@ td.n41-status-mismatch,
 }
 
 .company-detail-inner {
-  max-width: 1120px;
+  width: 100%;
+  max-width: 1400px;
   margin: 0 auto;
-  padding: 20px 24px 48px;
+  padding: 16px 20px;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
-.company-detail-topbar {
+.company-detail-body {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 16px;
+  align-items: stretch;
+  gap: 16px;
+  flex: 1;
+  min-height: 0;
 }
+
+.company-detail-main {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.company-detail-side {
+  flex: 0 0 300px;
+  max-width: 300px;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Mini calendar and notes are their natural height; the upcoming list takes
+   whatever is left and scrolls inside it. */
+.company-mini-cal-panel { flex: 0 0 auto; }
+.company-upcoming-panel { flex: 1 1 0; min-height: 120px; }
+.company-notes-panel { flex: 0 0 auto; }
 
 .company-back-btn {
   display: inline-flex;
@@ -2706,14 +2745,22 @@ td.n41-status-mismatch,
 
 .company-detail-header {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
   gap: 16px;
-  padding: 18px 20px;
+  padding: 14px 20px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
-  margin-bottom: 16px;
+  flex-shrink: 0;
+}
+
+/* Tabs live inline in the title bar here, not as their own underlined row. */
+.company-detail-header .company-section-tabs {
+  flex: 0 1 auto;
+  min-width: 0;
+  border-bottom: none;
+  margin-bottom: 0;
 }
 
 .company-detail-title {
@@ -2838,7 +2885,9 @@ td.n41-status-mismatch,
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 22px;
-  min-height: 200px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .company-section-empty {
@@ -4210,3 +4259,481 @@ span.dash-event { cursor: pointer; /* clicking selects the day */ }
 @media (max-width: 620px) {
   .service-toggles { grid-template-columns: 1fr; }
 }
+
+/* ============================================================
+   Home — calendar with the upcoming-tasks rail beside it
+   ============================================================ */
+
+/* The rail sits to the left of the month grid; earlier stacked-layout rules
+   above are for narrow screens only, so they are re-asserted in the media
+   query at the end of this block. */
+.dashboard-main {
+  flex-direction: row;
+  align-items: stretch;
+}
+
+.dashboard-side {
+  flex: 0 0 300px;
+  max-width: 300px;
+}
+
+.dashboard-side .dashboard-panel-body { max-height: none; }
+
+.dashboard-calendar-panel { min-height: 0; }
+
+/* Back to floating inside the layout now that there is something to float over. */
+.dashboard-day-pane {
+  position: absolute;
+  top: 0;
+}
+
+.upcoming-row {
+  align-items: flex-start;
+  gap: 10px;
+  padding: 9px 14px;
+}
+
+.upcoming-row .cal-day-task-check { margin-top: 2px; }
+
+.upcoming-row .dash-row-date {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.upcoming-row.is-done .dash-row-id { text-decoration: line-through; }
+
+@media (max-width: 760px) {
+  .dashboard-wrap { overflow-y: auto; }
+  .dashboard-main { flex-direction: column; }
+  .dashboard-calendar-panel { min-height: 520px; }
+  .dashboard-side { flex: none; max-width: none; }
+  /* Stacked, the rail is a fixed-height block rather than a full-height column. */
+  .dashboard-side .dashboard-panel { flex: none; }
+  .dashboard-side .dashboard-panel-body { max-height: 320px; }
+  /* Stacked layout is tall — pin the pane to the window instead. */
+  .dashboard-day-pane {
+    position: fixed;
+    top: 56px;
+    width: min(320px, 88vw);
+    z-index: 200;
+  }
+}
+
+/* ============================================================
+   Searchable combobox (company form → Owner)
+   ============================================================ */
+
+.combo-wrap {
+  position: relative;
+  display: block;
+}
+
+.combo-list {
+  position: absolute;
+  z-index: 60;
+  top: calc(100% + 3px);
+  left: 0;
+  right: 0;
+  max-height: 208px;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+  padding: 4px;
+}
+
+.combo-list[hidden] { display: none !important; }
+
+.combo-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 9px;
+  border-radius: 6px;
+  font-family: var(--font);
+  font-size: 12.5px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.combo-option.is-active { background: var(--accent-light); }
+
+.combo-option-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.combo-option--new .combo-option-label { color: var(--text); }
+
+.combo-option-tag {
+  flex-shrink: 0;
+  padding: 1px 7px;
+  border-radius: 9px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.combo-empty {
+  padding: 10px;
+  text-align: center;
+  font-family: var(--font);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.form-hint {
+  font-family: var(--font);
+  font-size: 11.5px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.form-hint:empty { display: none; }
+
+/* ============================================================
+   Company detail — schedule sidebar (mini calendar + upcoming runs)
+   ============================================================ */
+
+.company-mini-cal-panel .dashboard-panel-header { justify-content: space-between; }
+
+.company-mini-cal-title {
+  flex: 1;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.company-mini-cal-panel .dashboard-panel-body,
+.company-upcoming-panel .dashboard-panel-body {
+  padding: 10px;
+}
+
+.mini-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.mini-cal-head-cell {
+  text-align: center;
+  font-family: var(--font);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding-bottom: 4px;
+}
+
+.mini-cal-cell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  aspect-ratio: 1;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  font-family: var(--font);
+  font-size: 11px;
+  color: var(--text-muted);
+  cursor: default;
+}
+
+.mini-cal-cell.has-events {
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.mini-cal-cell.has-events:hover { background: var(--row-hover); }
+
+.mini-cal-cell.is-today .mini-cal-date {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent-light);
+}
+
+.mini-cal-cell.is-selected {
+  background: var(--accent);
+  color: #fff;
+}
+
+.mini-cal-cell.is-selected .mini-cal-date { background: none; }
+
+.mini-cal-dots {
+  display: flex;
+  gap: 2px;
+  height: 4px;
+}
+
+.mini-cal-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+
+.mini-cal-dot--paystub { background: #185fa5; }
+.mini-cal-dot--tax { background: #b9791f; }
+.mini-cal-cell.is-selected .mini-cal-dot { background: #fff; }
+
+.company-upcoming-panel .payroll-run-list,
+#companyUpcomingList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* A run is complete once both its sub-tasks are — flagged in the header. */
+.payroll-run.is-complete { background: #f2f7f2; border-color: #cfe3cf; }
+
+.payroll-run-complete-badge {
+  margin-left: auto;
+  padding: 1px 8px;
+  border-radius: 9px;
+  background: var(--success);
+  color: #fff;
+  font-family: var(--font);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+/* A locked tax sub-task can't be checked until its paystub is. */
+.payroll-task.is-locked { opacity: 0.55; cursor: not-allowed; }
+.payroll-task.is-locked:hover { border-color: var(--border); }
+.payroll-task.is-locked .payroll-task-box { cursor: not-allowed; }
+
+.cal-day-task.is-locked,
+.upcoming-row.is-locked { opacity: 0.55; }
+
+/* A batched card: one shared tax deposit under a stack of contributing
+   paystubs, instead of repeating that deposit's checkbox once per run. */
+.payroll-run-subruns {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed var(--border);
+}
+
+.payroll-run-subruns .payroll-task { flex: 1 1 auto; }
+
+/* The mini calendar's "jump to this task" click lands here. */
+@keyframes payroll-task-highlight-flash {
+  0%, 100% { box-shadow: none; }
+  25% { box-shadow: 0 0 0 2px #f0c94d; background: #fff6de; }
+}
+
+.payroll-task.is-highlighted {
+  animation: payroll-task-highlight-flash 1.5s ease;
+}
+
+@media (max-width: 960px) {
+  /* Not enough width for a fixed side-by-side split — fall back to a
+     normally-scrolling stacked page instead of splitting one fixed height
+     two ways. */
+  .company-detail { overflow-y: auto; }
+  .company-detail-body { flex-direction: column; flex: none; }
+  .company-detail-main { flex: none; min-height: auto; }
+  .company-section-panel { flex: none; overflow-y: visible; min-height: 200px; }
+  .company-detail-side {
+    flex: none;
+    max-width: none;
+    flex-direction: row;
+    min-height: auto;
+  }
+  .company-mini-cal-panel,
+  .company-upcoming-panel { flex: 1 1 0; min-width: 0; min-height: 0; }
+  .company-upcoming-panel .dashboard-panel-body { max-height: 320px; }
+}
+
+@media (max-width: 620px) {
+  .company-detail-side { flex-direction: column; }
+}
+
+/* ============================================================
+   Company detail — notes panel
+   ============================================================ */
+
+/* Sits under the section panel in the main column, so it is a fixed block
+   rather than something that competes for the sidebar's height. */
+.company-notes-panel { flex: 0 0 auto; }
+
+.company-notes-panel .dashboard-panel-body { padding: 0; overflow: hidden; }
+
+.company-notes-input {
+  display: block;
+  width: 100%;
+  height: 92px;
+  /* No drag handle — the panel owns its height. */
+  resize: none;
+  padding: 10px 12px;
+  border: none;
+  background: transparent;
+  font-family: var(--font);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.company-notes-input:focus { outline: none; }
+
+.company-notes-input::placeholder { color: var(--text-muted); }
+
+.company-notes-status {
+  margin-left: auto;
+  font-family: var(--font);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.company-notes-status.is-saved { color: var(--success); }
+.company-notes-status.is-error { color: var(--danger); }
+
+/* ============================================================
+   Company form — location + state
+   ============================================================ */
+
+.form-location-row {
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+}
+
+.form-location-row .form-input { min-width: 0; }
+.form-location-row #companyFormLocation { flex: 1; }
+
+.form-state-select {
+  flex: 0 0 78px;
+  appearance: none;
+  padding-right: 22px;
+  background-image: var(--icon-caret-down);
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+  background-size: 12px;
+  cursor: pointer;
+}
+
+/* ============================================================
+   Schedule colour families
+
+   Two groups, so a glance tells you which service a chip belongs to:
+     payroll   — blue family (pay schedules AND the payroll tax deposit)
+     salesTax  — amber family
+
+   Within a family each cadence gets its own hue so the values stay tellable
+   apart. The value alone is not enough to pick a colour — "Monthly" is both a
+   payroll cadence and a sales tax one — so every rule keys on the pair.
+   ============================================================ */
+
+[data-group="payroll"] {
+  --sched-bg: #e8f0fa;
+  --sched-fg: #1f5b96;
+  --sched-strong: #2c6fb0;
+}
+[data-group="payroll"][data-schedule="Monthly"]      { --sched-bg: #e6f1fb; --sched-fg: #185fa5; --sched-strong: #1c72c4; }
+[data-group="payroll"][data-schedule="Semi-Monthly"] { --sched-bg: #e8eafb; --sched-fg: #38459c; --sched-strong: #4453bb; }
+[data-group="payroll"][data-schedule="Bi-Weekly"]    { --sched-bg: #dff0f8; --sched-fg: #10627f; --sched-strong: #14789c; }
+[data-group="payroll"][data-schedule="Semi-Weekly"]  { --sched-bg: #dfeaf7; --sched-fg: #27548c; --sched-strong: #3067ab; }
+
+[data-group="salesTax"] {
+  --sched-bg: #fbeedb;
+  --sched-fg: #8a5310;
+  --sched-strong: #a9691a;
+}
+[data-group="salesTax"][data-schedule="Pre-Payment"] { --sched-bg: #fdefd9; --sched-fg: #8a4f0b; --sched-strong: #ab6410; }
+[data-group="salesTax"][data-schedule="Monthly"]     { --sched-bg: #fbe9d2; --sched-fg: #8f5713; --sched-strong: #b06c1b; }
+[data-group="salesTax"][data-schedule="Quarterly"]   { --sched-bg: #fbf0cf; --sched-fg: #7d5c0a; --sched-strong: #9c7310; }
+[data-group="salesTax"][data-schedule="Y6"]          { --sched-bg: #fae5cd; --sched-fg: #8c4715; --sched-strong: #ac591b; }
+[data-group="salesTax"][data-schedule="Y12"]         { --sched-bg: #f7e3c0; --sched-fg: #7a4a10; --sched-strong: #995d16; }
+
+/* Form buttons pick up the same tokens once chosen. */
+.form-toggle-btn[data-group].is-active {
+  background: var(--sched-strong);
+  border-color: var(--sched-strong);
+  color: #fff;
+}
+
+.form-toggle-btn[data-group]:hover:not(.is-active):not(:disabled) {
+  background: var(--sched-bg);
+  border-color: var(--sched-strong);
+  color: var(--sched-fg);
+}
+
+/* Payroll schedule checkboxes are part of the payroll family too. */
+.form-check[data-group] input:checked + .form-check-box {
+  background: var(--sched-strong);
+  border-color: var(--sched-strong);
+}
+
+.form-check[data-group]:has(input:checked) { color: var(--sched-fg); }
+
+/* ── Calendar chips ── */
+.dash-event.cal-event--paystub {
+  background: #e6f1fb;
+  color: #185fa5;
+  border-color: #cfe2f4;
+}
+
+/* Payroll tax is the same family as the paystub it pays, a shade deeper. */
+.dash-event.cal-event--tax {
+  background: #dfeaf7;
+  color: #27548c;
+  border-color: #c3d7ee;
+}
+
+.dash-event.cal-event--salesTax {
+  background: #fbeedb;
+  color: #8a5310;
+  border-color: #eedcc0;
+}
+
+/* ── Mini-calendar dots ── */
+.mini-cal-dot--paystub  { background: #1c72c4; }
+.mini-cal-dot--tax      { background: #27548c; }
+.mini-cal-dot--salesTax { background: #b06c1b; }
+
+/* ── Upcoming cards ── */
+.payroll-run-company {
+  display: block;
+  width: 100%;
+  margin-bottom: 7px;
+  padding: 0;
+  background: none;
+  border: none;
+  text-align: left;
+  font-family: var(--font);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.payroll-run-company:hover { text-decoration: underline; }
+
+/* A left edge in the family colour, so a card's service reads at a glance. */
+.payroll-run { border-left: 3px solid #cfe2f4; }
+.payroll-run--sales-tax { border-left-color: #eedcc0; }
+.payroll-run.is-complete { border-left-color: #cfe3cf; }
+
+/* The Home rail is narrower than the detail sidebar — let cards wrap. */
+#upcomingTasksList .payroll-run-head { row-gap: 4px; }
+#upcomingTasksList .payroll-run-count { margin-left: 0; }

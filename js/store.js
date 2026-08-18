@@ -1,9 +1,9 @@
 /**
  * Data layer.
  *
- * Backed by localStorage for now, with seeded demo data on first run.
- * Every function here is async and returns plain objects, so swapping in a
- * Supabase-backed Express API later is a change to this file only.
+ * Backed by localStorage for now. Every function here is async and returns
+ * plain objects, so swapping in a Supabase-backed Express API later is a
+ * change to this file only.
  *
  * Shape:
  *   Owner   { id, name, email, phone }
@@ -18,136 +18,6 @@ const COMPANIES_STORAGE_KEY = scopedStorageKey("companies");
 
 let allOwners = [];
 let allCompanies = [];
-
-// ── Seed data ────────────────────────────────────────────────────────────────
-
-const SEED_OWNERS = [
-  { id: "own-1", name: "Grace Nakamura", email: "grace@northlineaccounting.com", phone: "(415) 555-0142" },
-  { id: "own-2", name: "Daniel Okafor",  email: "daniel@northlineaccounting.com", phone: "(415) 555-0187" },
-  { id: "own-3", name: "Priya Raman",    email: "priya@northlineaccounting.com",  phone: "(510) 555-0119" },
-  { id: "own-4", name: "Miles Sorensen", email: "miles@northlineaccounting.com",  phone: "(408) 555-0163" },
-];
-
-const SEED_COMPANIES = [
-  {
-    id: "co-1", name: "Aster Coffee Roasters", ownerId: "own-1", location: "Oakland, CA",
-    payrollSchedules: ["Semi-Monthly", "Bi-Weekly"], payrollTax: "Monthly", salesTax: "Quarterly",
-    services: { payroll: true, salesTax: true, bookkeeping: true, registration: true, reporting: true },
-  },
-  {
-    id: "co-2", name: "Brightline Dental Group", ownerId: "own-2", location: "San Jose, CA",
-    payrollSchedules: ["Bi-Weekly"], payrollTax: "Semi-Weekly", salesTax: "",
-    services: { payroll: true, salesTax: false, bookkeeping: true, registration: true, reporting: true },
-  },
-  {
-    id: "co-3", name: "Cedar & Vine Interiors", ownerId: "own-1", location: "Berkeley, CA",
-    payrollSchedules: ["Monthly"], payrollTax: "Monthly", salesTax: "Y6",
-    services: { payroll: true, salesTax: true, bookkeeping: true, registration: false, reporting: false },
-  },
-  {
-    id: "co-4", name: "Delta Freight Logistics", ownerId: "own-3", location: "Stockton, CA",
-    payrollSchedules: ["Bi-Weekly"], payrollTax: "Semi-Weekly", salesTax: "Quarterly",
-    services: { payroll: true, salesTax: true, bookkeeping: true, registration: true, reporting: true },
-  },
-  {
-    id: "co-5", name: "Evergreen Landscaping", ownerId: "own-4", location: "Santa Rosa, CA",
-    payrollSchedules: ["Semi-Monthly"], payrollTax: "Monthly", salesTax: "Y12",
-    services: { payroll: true, salesTax: true, bookkeeping: false, registration: true, reporting: false },
-  },
-  {
-    id: "co-6", name: "Fairmount Property Mgmt", ownerId: "own-2", location: "San Francisco, CA",
-    payrollSchedules: ["Monthly"], payrollTax: "Monthly", salesTax: "",
-    services: { payroll: true, salesTax: false, bookkeeping: true, registration: true, reporting: false },
-  },
-  {
-    id: "co-7", name: "Golden Gate Auto Body", ownerId: "own-3", location: "Daly City, CA",
-    payrollSchedules: ["Semi-Monthly"], payrollTax: "Semi-Weekly", salesTax: "Quarterly",
-    services: { payroll: true, salesTax: true, bookkeeping: true, registration: false, reporting: true },
-  },
-  {
-    id: "co-8", name: "Harbor Point Consulting", ownerId: "own-1", location: "Sausalito, CA",
-    payrollSchedules: ["Monthly"], payrollTax: "Monthly", salesTax: "",
-    services: { payroll: false, salesTax: false, bookkeeping: true, registration: true, reporting: false },
-  },
-  {
-    id: "co-9", name: "Ironwood Construction", ownerId: "own-4", location: "Concord, CA",
-    payrollSchedules: ["Monthly", "Bi-Weekly"], payrollTax: "Semi-Weekly", salesTax: "Quarterly",
-    services: { payroll: true, salesTax: true, bookkeeping: true, registration: true, reporting: true },
-  },
-  {
-    id: "co-10", name: "Juniper Bakery", ownerId: "own-2", location: "Alameda, CA",
-    payrollSchedules: ["Semi-Monthly"], payrollTax: "Monthly", salesTax: "Y6",
-    services: { payroll: true, salesTax: true, bookkeeping: true, registration: false, reporting: false },
-  },
-  {
-    id: "co-11", name: "Kestrel Software Studio", ownerId: "own-3", location: "Palo Alto, CA",
-    payrollSchedules: ["Semi-Monthly"], payrollTax: "Semi-Weekly", salesTax: "",
-    services: { payroll: true, salesTax: false, bookkeeping: true, registration: true, reporting: true },
-  },
-  {
-    id: "co-12", name: "Lantern Hill Winery", ownerId: "own-4", location: "Napa, CA",
-    payrollSchedules: ["Monthly"], payrollTax: "Monthly", salesTax: "Y12",
-    services: { payroll: true, salesTax: true, bookkeeping: false, registration: true, reporting: false },
-  },
-  {
-    id: "co-13", name: "Meridian Physical Therapy", ownerId: "own-1", location: "Walnut Creek, CA",
-    payrollSchedules: ["Bi-Weekly"], payrollTax: "Semi-Weekly", salesTax: "",
-    services: { payroll: true, salesTax: false, bookkeeping: true, registration: true, reporting: true },
-  },
-  {
-    id: "co-14", name: "Northgate Hardware", ownerId: "own-2", location: "Vallejo, CA",
-    payrollSchedules: ["Semi-Monthly"], payrollTax: "Monthly", salesTax: "Quarterly",
-    services: { payroll: true, salesTax: true, bookkeeping: true, registration: true, reporting: true },
-  },
-  {
-    id: "co-15", name: "Orchard Lane Childcare", ownerId: "own-3", location: "Fremont, CA",
-    payrollSchedules: ["Monthly"], payrollTax: "Monthly", salesTax: "",
-    services: { payroll: true, salesTax: false, bookkeeping: true, registration: false, reporting: false },
-  },
-];
-
-/**
- * Demo payroll detail: bi-weekly anchors (so those groups can generate dates
- * out of the box) and a few employees per group.
- */
-const SEED_PAYROLL_DETAIL = {
-  "co-1": {
-    "Semi-Monthly": ["Amara Osei", "Ben Kaplan"],
-    "Bi-Weekly": { anchorDate: "2026-08-14", employees: ["Chris Duval", "Dana Reyes", "Eli Moore"] },
-  },
-  "co-2": { "Bi-Weekly": { anchorDate: "2026-08-21", employees: ["Farah Haddad", "Greg Lin"] } },
-  "co-3": { "Monthly": ["Hana Sato"] },
-  "co-4": { "Bi-Weekly": { anchorDate: "2026-08-07", employees: ["Ivan Petrov", "Jae Kim", "Kira Novak", "Luis Ortega"] } },
-  "co-9": {
-    "Monthly": ["Mina Chowdhury"],
-    "Bi-Weekly": { anchorDate: "2026-08-14", employees: ["Noah Bright", "Omar Sy"] },
-  },
-  "co-13": { "Bi-Weekly": { anchorDate: "2026-08-28", employees: ["Pia Andersen"] } },
-};
-
-/** Expand SEED_PAYROLL_DETAIL into the payrollGroups shape. */
-function buildSeedPayrollGroups(company) {
-  const detail = SEED_PAYROLL_DETAIL[company.id];
-  const enabled = new Set(company.payrollSchedules ?? []);
-
-  return PAYROLL_SCHEDULES.map((schedule, i) => {
-    const entry = detail?.[schedule];
-    const names = Array.isArray(entry) ? entry : (entry?.employees ?? []);
-    const anchorDate = Array.isArray(entry) ? "" : (entry?.anchorDate ?? "");
-    return {
-      schedule,
-      enabled: enabled.has(schedule),
-      anchorDate,
-      weekday: anchorDate ? parseYmd(anchorDate)?.getDay() ?? null : null,
-      employees: names.map((name, j) => ({ id: `emp-seed-${company.id}-${i}-${j}`, name })),
-    };
-  });
-}
-
-const SEED_COMPANIES_FULL = SEED_COMPANIES.map(company => ({
-  ...company,
-  payrollGroups: buildSeedPayrollGroups(company),
-}));
 
 // ── Normalisation ────────────────────────────────────────────────────────────
 
@@ -226,20 +96,48 @@ function normalizePayrollGroups(raw) {
   });
 }
 
+/**
+ * State moved out of the free-text location into its own field, because the
+ * sales tax due date depends on it. Older records (and the seed data) carry
+ * it as a "City, ST" suffix, so it is lifted out of the location when there
+ * is no explicit state — leaving the location holding just the city.
+ */
+function splitLocationAndState(raw) {
+  const location = String(raw?.location ?? "").trim();
+  const explicit = String(raw?.state ?? "").trim().toUpperCase();
+  if (explicit) {
+    return { location, state: STATE_CODES.includes(explicit) ? explicit : "" };
+  }
+
+  const match = /^(.*?),\s*([A-Za-z]{2})$/.exec(location);
+  const suffix = match?.[2]?.toUpperCase() ?? "";
+  if (!match || !STATE_CODES.includes(suffix)) return { location, state: "" };
+  return { location: match[1].trim(), state: suffix };
+}
+
 function normalizeCompany(raw) {
   const payrollGroups = normalizePayrollGroups(raw);
+  const { location, state } = splitLocationAndState(raw);
   return {
     id: String(raw?.id ?? ""),
     name: String(raw?.name ?? "").trim(),
     ownerId: String(raw?.ownerId ?? ""),
-    location: String(raw?.location ?? "").trim(),
+    location,
+    state,
     payrollGroups,
     // Derived from the groups so there is one source of truth.
     payrollSchedules: payrollGroups.filter(g => g.enabled).map(g => g.schedule),
     payrollTax: String(raw?.payrollTax ?? "").trim(),
     salesTax: String(raw?.salesTax ?? "").trim(),
     services: normalizeServices(raw?.services),
+    // Free-form memo, shown and edited on the detail page.
+    notes: String(raw?.notes ?? ""),
   };
+}
+
+/** "Oakland, CA" — the two fields recombined for display. */
+function getCompanyLocationDisplay(company) {
+  return [company?.location, company?.state].filter(Boolean).join(", ");
 }
 
 function normalizeOwner(raw) {
@@ -277,6 +175,10 @@ function persistCompanies() {
   writeStorage(COMPANIES_STORAGE_KEY, allCompanies);
 }
 
+function persistOwners() {
+  writeStorage(OWNERS_STORAGE_KEY, allOwners);
+}
+
 // ── Public API ───────────────────────────────────────────────────────────────
 
 /** Load owners and companies, seeding demo data on first run. */
@@ -284,20 +186,17 @@ async function loadAppData() {
   const storedOwners = readStorage(OWNERS_STORAGE_KEY);
   const storedCompanies = readStorage(COMPANIES_STORAGE_KEY);
 
-  if (!storedOwners) writeStorage(OWNERS_STORAGE_KEY, SEED_OWNERS);
-  if (!storedCompanies) writeStorage(COMPANIES_STORAGE_KEY, SEED_COMPANIES_FULL);
-
-  allOwners = (storedOwners ?? SEED_OWNERS).map(normalizeOwner);
-  allCompanies = (storedCompanies ?? SEED_COMPANIES_FULL).map(normalizeCompany);
+  allOwners = (storedOwners ?? []).map(normalizeOwner);
+  allCompanies = (storedCompanies ?? []).map(normalizeCompany);
   loadCompletedTasks();
 
   return { owners: allOwners, companies: allCompanies };
 }
 
-/** Wipe local edits and re-seed. */
-async function resetDemoData() {
-  writeStorage(OWNERS_STORAGE_KEY, SEED_OWNERS);
-  writeStorage(COMPANIES_STORAGE_KEY, SEED_COMPANIES_FULL);
+/** Wipe every company, owner, and completed task. Cannot be undone. */
+async function clearAllData() {
+  writeStorage(OWNERS_STORAGE_KEY, []);
+  writeStorage(COMPANIES_STORAGE_KEY, []);
   writeStorage(TASKS_STORAGE_KEY, []);
   return loadAppData();
 }
@@ -321,6 +220,40 @@ function getOwnerById(id) {
 /** Owner display name for a company, or "" when unassigned. */
 function getCompanyOwnerName(company) {
   return getOwnerById(company?.ownerId)?.name ?? "";
+}
+
+/** Case-insensitive lookup by name — what the owner combobox matches on. */
+function findOwnerByName(name) {
+  const needle = String(name ?? "").trim().toLowerCase();
+  if (!needle) return null;
+  return allOwners.find(o => o.name.toLowerCase() === needle) ?? null;
+}
+
+/** Sequential id that won't collide with anything already stored. */
+function nextOwnerId() {
+  const used = new Set(allOwners.map(o => o.id));
+  let n = allOwners.length + 1;
+  while (used.has(`own-${n}`)) n += 1;
+  return `own-${n}`;
+}
+
+/**
+ * Create an owner from a name alone — the company form makes one on the fly
+ * when a name is typed that is not on file yet. Contact details are filled in
+ * later. An existing owner with the same name is returned instead of a
+ * duplicate.
+ */
+async function createOwner(fields) {
+  const name = String(fields?.name ?? "").trim();
+  if (!name) throw new Error("Owner name is required.");
+
+  const existing = findOwnerByName(name);
+  if (existing) return existing;
+
+  const owner = normalizeOwner({ ...fields, id: nextOwnerId(), name });
+  allOwners.push(owner);
+  persistOwners();
+  return owner;
 }
 
 /** Companies assigned to an owner — one owner, many companies. */
@@ -432,9 +365,36 @@ function isTaskComplete(taskId) {
   return completedTaskIds.has(taskId);
 }
 
+/**
+ * A tax deposit's paystub is expected to already be checked off; reopening
+ * the paystub afterwards would leave a filed deposit resting on payroll that
+ * (as far as this app knows) never ran, so the deposit reopens with it.
+ */
+function uncompleteDependentTaxTask(paystubTaskId) {
+  const parsed = parseTaskId(paystubTaskId);
+  if (!parsed || parsed.kind !== TASK_KIND_PAYSTUB) return;
+
+  const company = getCompanyById(parsed.companyId);
+  const depositor = String(company?.payrollTax ?? "").trim();
+  const payDate = parseYmd(parsed.date);
+  if (!company || !depositor || !payDate) return;
+
+  const taxDate = taxDueDateForPayDate(payDate, depositor);
+  if (!taxDate) return;
+  completedTaskIds.delete(buildTaxTaskId(company.id, ymd(taxDate)));
+}
+
 async function setTaskComplete(taskId, complete) {
-  if (complete) completedTaskIds.add(taskId);
-  else completedTaskIds.delete(taskId);
+  if (complete && !canCompleteTask(taskId)) {
+    throw new Error("Complete the paystub for this run before marking the tax payment done.");
+  }
+
+  if (complete) {
+    completedTaskIds.add(taskId);
+  } else {
+    completedTaskIds.delete(taskId);
+    uncompleteDependentTaxTask(taskId);
+  }
   persistCompletedTasks();
   return complete;
 }
@@ -474,6 +434,18 @@ async function updateCompany(id, patch) {
   const company = getCompanyById(id);
   if (!company) throw new Error(`Company ${id} not found.`);
   Object.assign(company, normalizeCompany({ ...company, ...patch }));
+  persistCompanies();
+  return company;
+}
+
+/**
+ * Notes autosave as they are typed, so this writes the one field rather than
+ * re-normalising the whole record on every keystroke.
+ */
+async function setCompanyNotes(id, notes) {
+  const company = getCompanyById(id);
+  if (!company) throw new Error(`Company ${id} not found.`);
+  company.notes = String(notes ?? "");
   persistCompanies();
   return company;
 }

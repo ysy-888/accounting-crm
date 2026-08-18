@@ -5,16 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Practice CRM</title>
 <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-<link rel="stylesheet" href="crm.css?v=20260818-0933" />
+<link rel="stylesheet" href="crm.css?v=20260818-1829" />
 </head>
 <body>
 
 <header class="app-header">
   <nav class="app-title-nav" role="tablist" aria-label="Main views">
-    <button type="button" class="app-logo-text" id="navLogoDashboard" title="Dashboard">Practice CRM</button>
+    <button type="button" class="app-logo-text" id="navLogoHome" role="tab" aria-selected="false" title="Home">Home</button>
     <button type="button" class="app-title-tab is-active" id="navTabCompanies" role="tab" aria-selected="true">Companies</button>
-    <button type="button" class="app-title-tab" id="navTabCalendar" role="tab" aria-selected="false">Calendar</button>
-    <button type="button" class="app-title-tab" id="navTabOwners" role="tab" aria-selected="false">Owners</button>
   </nav>
   <div class="header-right">
     <div class="header-greeting" id="headerGreeting" hidden>
@@ -34,7 +32,7 @@
         </button>
         <button type="button" class="header-menu-item header-menu-item-separator" id="headerMenuResetData" role="menuitem">
           <svg class="header-menu-item-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 2v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L3 8"/></svg>
-          <span>Reset demo data</span>
+          <span>Clear all data</span>
         </button>
       </div>
     </div>
@@ -103,38 +101,73 @@
   <!-- ── Company detail (full page) ──────────────────────────── -->
   <div id="companyDetailView" class="company-detail" hidden>
     <div class="company-detail-inner">
-      <div class="company-detail-topbar">
-        <button type="button" class="company-back-btn" id="companyDetailBackBtn">
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
-          Companies
-        </button>
-      </div>
+      <div class="company-detail-body">
+        <div class="company-detail-main">
+          <div class="company-detail-header">
+            <button type="button" class="company-back-btn" id="companyDetailBackBtn">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+              Companies
+            </button>
 
-      <div class="company-detail-header">
-        <div class="company-detail-headline">
-          <div class="company-detail-title" id="companyDetailTitle">—</div>
-          <div class="company-detail-subtitle" id="companyDetailSubtitle"></div>
-          <div class="company-detail-pills" id="companyDetailPills"></div>
-        </div>
-        <div class="header-menu-wrap">
-          <button type="button" class="btn btn-icon" id="companyDetailMenuBtn" aria-label="Company menu" aria-haspopup="menu" aria-expanded="false">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="1.75"/><circle cx="12" cy="12" r="1.75"/><circle cx="12" cy="19" r="1.75"/></svg>
-          </button>
-          <div id="companyDetailMenu" class="header-menu-dropdown" hidden role="menu">
-            <button type="button" class="header-menu-item" id="companyMenuEdit" role="menuitem">
-              <svg class="header-menu-item-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>
-              <span>Edit company details</span>
-            </button>
-            <button type="button" class="header-menu-item header-menu-item-separator header-menu-item--danger" id="companyMenuDelete" role="menuitem">
-              <svg class="header-menu-item-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
-              <span>Delete company</span>
-            </button>
+            <div class="company-detail-headline">
+              <div class="company-detail-title" id="companyDetailTitle">—</div>
+              <div class="company-detail-subtitle" id="companyDetailSubtitle"></div>
+              <div class="company-detail-pills" id="companyDetailPills"></div>
+            </div>
+
+            <div class="company-section-tabs" id="companySectionTabs" role="tablist" aria-label="Company sections"></div>
+
+            <div class="header-menu-wrap">
+              <button type="button" class="btn btn-icon" id="companyDetailMenuBtn" aria-label="Company menu" aria-haspopup="menu" aria-expanded="false">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="1.75"/><circle cx="12" cy="12" r="1.75"/><circle cx="12" cy="19" r="1.75"/></svg>
+              </button>
+              <div id="companyDetailMenu" class="header-menu-dropdown" hidden role="menu">
+                <button type="button" class="header-menu-item" id="companyMenuEdit" role="menuitem">
+                  <svg class="header-menu-item-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>
+                  <span>Edit company details</span>
+                </button>
+                <button type="button" class="header-menu-item header-menu-item-separator header-menu-item--danger" id="companyMenuDelete" role="menuitem">
+                  <svg class="header-menu-item-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+                  <span>Delete company</span>
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
 
-      <div class="company-section-tabs" id="companySectionTabs" role="tablist" aria-label="Company sections"></div>
-      <div class="company-section-panel" id="companySectionPanel"></div>
+          <div class="company-section-panel" id="companySectionPanel"></div>
+
+          <section class="dashboard-panel company-notes-panel">
+            <div class="dashboard-panel-header">
+              <span class="dashboard-panel-title">Notes</span>
+              <span class="company-notes-status" id="companyNotesStatus" role="status" aria-live="polite"></span>
+            </div>
+            <div class="dashboard-panel-body">
+              <textarea id="companyNotesInput" class="company-notes-input"
+                        placeholder="Anything worth remembering about this client…"
+                        aria-label="Company notes" spellcheck="true"></textarea>
+            </div>
+          </section>
+        </div>
+
+        <aside class="company-detail-side" id="companyDetailSide">
+          <section class="dashboard-panel company-mini-cal-panel">
+            <div class="dashboard-panel-header">
+              <button type="button" class="btn btn-page" id="companyMiniCalPrev" title="Previous month" aria-label="Previous month">‹</button>
+              <span class="dashboard-panel-title company-mini-cal-title" id="companyMiniCalTitle">—</span>
+              <button type="button" class="btn btn-page" id="companyMiniCalNext" title="Next month" aria-label="Next month">›</button>
+            </div>
+            <div class="dashboard-panel-body" id="companyMiniCalBody"></div>
+          </section>
+
+          <section class="dashboard-panel company-upcoming-panel">
+            <div class="dashboard-panel-header">
+              <span class="dashboard-panel-title">Upcoming</span>
+              <span class="dashboard-panel-count" id="companyUpcomingCount"></span>
+            </div>
+            <div class="dashboard-panel-body dash-scroll" id="companyUpcomingList"></div>
+          </section>
+        </aside>
+      </div>
     </div>
   </div>
 
@@ -158,6 +191,15 @@
         </div>
         <div class="dashboard-cal" id="calGrid"></div>
       </section>
+      <aside class="dashboard-side">
+        <section class="dashboard-panel dashboard-upcoming-panel">
+          <div class="dashboard-panel-header">
+            <span class="dashboard-panel-title">Upcoming tasks</span>
+            <span class="dashboard-panel-count" id="upcomingTasksCount"></span>
+          </div>
+          <div class="dashboard-panel-body dash-scroll" id="upcomingTasksList"></div>
+        </section>
+      </aside>
       <aside class="dashboard-panel dashboard-day-pane" id="calDayPane" hidden>
         <div class="dashboard-panel-header">
           <span class="dashboard-panel-title" id="calDayPaneTitle">—</span>
@@ -169,20 +211,6 @@
     </div>
   </div>
 
-  <!-- ── Owners (placeholder for the next build step) ────────── -->
-  <div id="ownersView" class="company-detail" hidden>
-    <div class="company-detail-inner">
-      <div class="company-section-panel">
-        <div class="company-section-empty">
-          <div class="company-section-empty-title">Owners</div>
-          <div class="company-section-empty-text">
-            Owners are already modelled in the data layer and drive the Owner column
-            and filter on the Companies tab. The Owners page itself is the next build step.
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
 </div>
 
 <footer id="appFooter" class="app-footer">
@@ -247,15 +275,25 @@
         <span class="form-error" id="companyFormNameError" hidden>Company name is required.</span>
       </label>
 
-      <label class="form-field">
+      <div class="form-field">
         <span class="form-label">Owner</span>
-        <select class="form-input" id="companyFormOwner"></select>
-      </label>
+        <div class="combo-wrap" id="companyFormOwnerCombo">
+          <input type="text" class="form-input combo-input" id="companyFormOwner" role="combobox"
+                 aria-expanded="false" aria-autocomplete="list" aria-controls="companyFormOwnerList"
+                 autocomplete="off" placeholder="Search owners or type a new name" />
+          <div class="combo-list" id="companyFormOwnerList" role="listbox" aria-label="Owners" hidden></div>
+        </div>
+        <span class="form-hint" id="companyFormOwnerHint"></span>
+      </div>
 
-      <label class="form-field">
+      <div class="form-field form-field--location">
         <span class="form-label">Location</span>
-        <input type="text" class="form-input" id="companyFormLocation" autocomplete="off" placeholder="City, State" />
-      </label>
+        <div class="form-location-row">
+          <input type="text" class="form-input" id="companyFormLocation" autocomplete="off" placeholder="City" aria-label="City" />
+          <select class="form-input form-state-select" id="companyFormState" aria-label="State"></select>
+        </div>
+        <span class="form-hint" id="companyFormStateHint"></span>
+      </div>
 
       <!-- Payroll and Sales Tax own the settings nested under them; the
            remaining services are plain on/off. -->
@@ -316,18 +354,20 @@
   </div>
 </div>
 
-<script src="js/config.js?v=20260818-0933"></script>
-<script src="js/util.js?v=20260818-0933"></script>
+<script src="js/config.js?v=20260818-1829"></script>
+<script src="js/util.js?v=20260818-1829"></script>
 <!-- Loaded before store.js — the seed data uses its date helpers. -->
-<script src="js/payroll-schedule.js?v=20260818-0933"></script>
-<script src="js/store.js?v=20260818-0933"></script>
-<script src="js/app-shell.js?v=20260818-0933"></script>
-<script src="js/companies-filters.js?v=20260818-0933"></script>
-<script src="js/companies.js?v=20260818-0933"></script>
-<script src="js/company-detail.js?v=20260818-0933"></script>
-<script src="js/company-form.js?v=20260818-0933"></script>
-<script src="js/payroll.js?v=20260818-0933"></script>
-<script src="js/calendar.js?v=20260818-0933"></script>
-<script src="js/main.js?v=20260818-0933"></script>
+<script src="js/payroll-schedule.js?v=20260818-1829"></script>
+<script src="js/store.js?v=20260818-1829"></script>
+<script src="js/app-shell.js?v=20260818-1829"></script>
+<script src="js/companies-filters.js?v=20260818-1829"></script>
+<script src="js/companies.js?v=20260818-1829"></script>
+<script src="js/company-detail.js?v=20260818-1829"></script>
+<script src="js/company-form.js?v=20260818-1829"></script>
+<script src="js/payroll.js?v=20260818-1829"></script>
+<!-- After payroll.js — the sales tax section reuses its task checkbox. -->
+<script src="js/sales-tax.js?v=20260818-1829"></script>
+<script src="js/calendar.js?v=20260818-1829"></script>
+<script src="js/main.js?v=20260818-1829"></script>
 </body>
 </html>

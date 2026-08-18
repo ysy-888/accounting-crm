@@ -32,7 +32,7 @@ index.html so the URLs change on every deploy.
 | `crm.css` | Design system carried over from the PO App, plus CRM-specific sections at the bottom |
 | `js/config.js` | Domain vocabulary — schedule options, the five service areas |
 | `js/util.js` | Display, sort-compare, search-highlight, and status-message helpers |
-| `js/store.js` | Data layer (localStorage + seed data) |
+| `js/store.js` | Data layer (localStorage) |
 | `js/app-shell.js` | View switching, header menu, CSV export |
 | `js/companies-filters.js` | Toolbar service filter + per-column filter popover |
 | `js/companies.js` | Companies table — search, sort, pagination, render |
@@ -80,11 +80,12 @@ company detail page.
 ## Storage
 
 `js/store.js` is the only file that knows where data lives. It currently uses
-`localStorage` (keys under `practiceCrm.*`) and seeds 15 demo companies and 4
-owners on first run. Every function is `async` and returns plain objects, so
-moving to a Supabase-backed Express API is a change to that one file.
+`localStorage` (keys under `practiceCrm.*`), starting empty on first run.
+Every function is `async` and returns plain objects, so moving to a
+Supabase-backed Express API is a change to that one file.
 
-*Reset demo data* in the header menu wipes local edits and re-seeds.
+*Clear all data* in the header menu permanently wipes every company, owner,
+and completed task.
 
 ## Payroll
 

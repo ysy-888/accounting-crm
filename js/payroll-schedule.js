@@ -303,3 +303,104 @@ function buildAllPayrollTasks(fromYmd, toYmd) {
                     a.companyName.localeCompare(b.companyName) ||
                     a.kind.localeCompare(b.kind));
 }
+
+// ── Payroll runs — the paystub/tax pairing ───────────────────────────────────
+//
+// A "run" is one pay date paired with the tax deposit it feeds into. The
+// paystub is always its own task; the tax side is shared whenever a deposit
+// covers more than one run (see buildPayrollTasks), so completing it in one
+// run's card completes it everywhere it's covered. A run only counts as done
+// once both sides are — and the tax side can't be checked at all until its
+// paystub is, since a deposit can't be filed against payroll that hasn't run.
+
+/**
+ * One pay run per enabled group, with its paystub and (if a depositor is
+ * set) the tax task covering it. Kept to runs where either part's due date
+ * falls in [fromYmd, toYmd] — a tax deposit can land well after its pay
+ * date, so a run can still be "upcoming" on its tax side after its paystub
+ * due date has already passed.
+ */
+function buildPayrollRuns(company, fromYmd, toYmd) {
+  const from = parseYmd(fromYmd) ?? new Date();
+  const to = parseYmd(toYmd) ?? new Date();
+  const scanFrom = ymd(addDays(from, -75));
+  const scanTo = ymd(addDays(to, 75));
+  const tasks = buildPayrollTasks(company, scanFrom, scanTo);
+
+  // Reverse-index each run a tax deposit covers, so a paystub can look up
+  // the (possibly shared) tax task that pays it.
+  const taxByRunKey = new Map();
+  tasks.filter(t => t.kind === TASK_KIND_TAX).forEach(taxTask => {
+    (taxTask.coveredRuns ?? []).forEach(run => {
+      taxByRunKey.set(`${run.schedule}|${run.payDate}`, taxTask);
+    });
+  });
+
+  return tasks
+    .filter(t => t.kind === TASK_KIND_PAYSTUB)
+    .map(paystub => {
+      const tax = taxByRunKey.get(`${paystub.schedule}|${paystub.payDate}`) ?? null;
+      return {
+        id: `${company.id}|${paystub.schedule}|${paystub.payDate}|run`,
+        companyId: company.id,
+        companyName: company.name,
+        schedule: paystub.schedule,
+        payDate: paystub.payDate,
+        paystub,
+        tax,
+      };
+    })
+    .filter(run => (run.paystub.dueDate >= fromYmd && run.paystub.dueDate <= toYmd) ||
+                    (run.tax && run.tax.dueDate >= fromYmd && run.tax.dueDate <= toYmd))
+    .sort((a, b) => a.payDate.localeCompare(b.payDate) || a.schedule.localeCompare(b.schedule));
+}
+
+/** A run is complete only once its paystub and (if any) its tax side are. */
+function isPayrollRunComplete(run) {
+  if (!isTaskComplete(run.paystub.id)) return false;
+  return !run.tax || isTaskComplete(run.tax.id);
+}
+
+/**
+ * Whether a task can be checked off. Paystubs always can; a tax deposit
+ * can't until every paystub run it covers is already done.
+ */
+function isTaxTaskUnlocked(task) {
+  if (!task || task.kind !== TASK_KIND_TAX) return true;
+  return (task.coveredRuns ?? []).every(run =>
+    isTaskComplete(buildPaystubTaskId(task.companyId, run.schedule, run.payDate))
+  );
+}
+
+/** Pull the id parts back out — cheaper than regenerating the schedule to look one task up. */
+function parseTaskId(taskId) {
+  const parts = String(taskId ?? "").split("|");
+  if (parts.length === 4 && parts[3] === TASK_KIND_PAYSTUB) {
+    return { kind: TASK_KIND_PAYSTUB, companyId: parts[0], schedule: parts[1], date: parts[2] };
+  }
+  if (parts.length === 3 && parts[2] === TASK_KIND_TAX) {
+    return { kind: TASK_KIND_TAX, companyId: parts[0], date: parts[1] };
+  }
+  return null;
+}
+
+/** Regenerate the one live task an id refers to, or null if it no longer exists. */
+function findTaskById(taskId) {
+  const parsed = parseTaskId(taskId);
+  const company = parsed && getCompanyById(parsed.companyId);
+  const anchor = parsed && parseYmd(parsed.date);
+  if (!company || !anchor) return null;
+
+  const from = ymd(addDays(anchor, -3));
+  return buildPayrollTasks(company, from, parsed.date).find(t => t.id === taskId) ?? null;
+}
+
+/**
+ * Backstop for setTaskComplete: a tax task id can only be marked complete
+ * once every paystub it covers already is. Fails open (allows it) when the
+ * task can no longer be found — e.g. its schedule was turned off — rather
+ * than permanently blocking a stale id.
+ */
+function canCompleteTask(taskId) {
+  return isTaxTaskUnlocked(findTaskById(taskId));
+}

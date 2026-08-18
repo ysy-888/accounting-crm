@@ -1,14 +1,15 @@
 /**
  * View switching and the header menu.
  *
- * Views: "companies" (list) → "company" (full-page detail) → back.
+ * Views: "home" (calendar + upcoming tasks), "companies" (list) → "company"
+ * (full-page detail) → back.
  * The detail page is a real view swap, not a modal, so the whole frame
  * (toolbar, footer pagination) hides with it.
  */
 
-const APP_VIEWS = ["companies", "company", "calendar", "owners"];
+const APP_VIEWS = ["home", "companies", "company"];
 
-let currentAppView = "companies";
+let currentAppView = "home";
 
 function getCurrentAppView() {
   return currentAppView;
@@ -26,8 +27,7 @@ function switchAppView(view) {
     companiesToolbar: view === "companies",
     companiesTableWrap: view === "companies",
     companyDetailView: view === "company",
-    calendarWrap: view === "calendar",
-    ownersView: view === "owners",
+    calendarWrap: view === "home",
     // Pagination belongs to the list only.
     appFooterEnd: view === "companies",
   };
@@ -39,9 +39,8 @@ function switchAppView(view) {
   // The Companies tab stays selected while a company detail page is open —
   // the detail is a drill-down within that section.
   const tabs = {
+    navLogoHome: view === "home",
     navTabCompanies: view === "companies" || view === "company",
-    navTabCalendar: view === "calendar",
-    navTabOwners: view === "owners",
   };
   Object.entries(tabs).forEach(([id, active]) => {
     const el = document.getElementById(id);
@@ -54,7 +53,7 @@ function switchAppView(view) {
     updateCompaniesPaginationUI();
   }
   // The grid needs real layout to size its rows, so render on entry.
-  if (view === "calendar" && typeof renderCalendar === "function") renderCalendar();
+  if (view === "home" && typeof renderCalendar === "function") renderCalendar();
 }
 
 // ── Header menu ──────────────────────────────────────────────────────────────
@@ -95,13 +94,13 @@ function initHeaderMenu() {
 
   document.getElementById("headerMenuResetData")?.addEventListener("click", async () => {
     closeHeaderMenu();
-    if (!confirm("Reset all local data back to the seeded demo companies?")) return;
-    setAppLoading(true, "Resetting…");
-    await resetDemoData();
+    if (!confirm("Permanently delete every company, owner, and completed task? This cannot be undone.")) return;
+    setAppLoading(true, "Clearing…");
+    await clearAllData();
     applyCompanyFilters();
     switchAppView("companies");
     setAppLoading(false);
-    showIndicator("Demo data reset", "success");
+    showIndicator("All data cleared", "success");
   });
 }
 
@@ -152,9 +151,7 @@ function exportCompaniesCsv() {
 
 function initAppNav() {
   document.getElementById("navTabCompanies")?.addEventListener("click", () => switchAppView("companies"));
-  document.getElementById("navTabCalendar")?.addEventListener("click", () => switchAppView("calendar"));
-  document.getElementById("navTabOwners")?.addEventListener("click", () => switchAppView("owners"));
-  document.getElementById("navLogoDashboard")?.addEventListener("click", () => switchAppView("companies"));
+  document.getElementById("navLogoHome")?.addEventListener("click", () => switchAppView("home"));
 
   document.getElementById("refreshBtn")?.addEventListener("click", async () => {
     setAppLoading(true, "Refreshing…");

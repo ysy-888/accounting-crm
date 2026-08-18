@@ -10,14 +10,42 @@ const CAL_MONTHS_BEFORE = 2;
 const CAL_MONTHS_AFTER = 12;
 const CAL_MAX_EVENTS = 3;
 
+/** The badge on a calendar chip — the cell is far too narrow for full labels. */
+const CAL_EVENT_SHORT_LABELS = {
+  paystub: "Pay",
+  tax: "Tax",
+  salesTax: "Sales",
+};
+
 let calCursor = null;          // { year, month } the arrows/title target
 let calSelectedYmd = "";       // day whose pane is open
 let calScrollEl = null;
 let calMonthAnchors = {};
 let calScrollRaf = 0;
 
-/** Which task kinds are shown. Both on by default. */
-let calFilterSelection = new Set([TASK_KIND_PAYSTUB, TASK_KIND_TAX]);
+/** Which task kinds are shown. All on by default. */
+let calFilterSelection = new Set([TASK_KIND_PAYSTUB, TASK_KIND_TAX, TASK_KIND_SALES_TAX]);
+
+/** Every kind the filter knows about — used to tell "all on" from "narrowed". */
+const CAL_TASK_KINDS = [TASK_KIND_PAYSTUB, TASK_KIND_TAX, TASK_KIND_SALES_TAX];
+
+/** Payroll and sales tax tasks together, on their due dates. */
+function buildAllTasks(fromYmd, toYmd) {
+  const salesTax = typeof buildAllSalesTaxTasks === "function"
+    ? buildAllSalesTaxTasks(fromYmd, toYmd)
+    : [];
+  return [...buildAllPayrollTasks(fromYmd, toYmd), ...salesTax]
+    .sort((a, b) => a.dueDate.localeCompare(b.dueDate) ||
+                    a.companyName.localeCompare(b.companyName) ||
+                    a.kind.localeCompare(b.kind));
+}
+
+/** The one-line context line for any task kind. */
+function describeAnyTask(task) {
+  return task.kind === TASK_KIND_SALES_TAX
+    ? describeSalesTaxTask(task)
+    : describeTaskContext(task);
+}
 
 /** Hide tasks already ticked off. */
 let calHideCompleted = false;
@@ -36,7 +64,7 @@ function getCalRange() {
 /** ymd → task[] for the visible range, after filters. */
 function buildCalEventsByDate() {
   const { start, end } = getCalRange();
-  const tasks = buildAllPayrollTasks(ymd(start), ymd(end));
+  const tasks = buildAllTasks(ymd(start), ymd(end));
   const byDate = new Map();
 
   tasks.forEach(task => {
@@ -114,7 +142,7 @@ function createCalEventChip(event) {
   const chip = document.createElement("button");
   chip.type = "button";
   chip.className = `dash-event cal-event--${event.kind}${event.done ? " is-done" : ""}`;
-  chip.title = `${event.companyName} · ${event.label} · ${describeTaskContext(event)}`;
+  chip.title = `${event.companyName} · ${event.label} · ${describeAnyTask(event)}`;
 
   const label = document.createElement("span");
   label.className = "dash-event-title";
@@ -123,7 +151,7 @@ function createCalEventChip(event) {
 
   const meta = document.createElement("span");
   meta.className = "dash-event-meta";
-  meta.textContent = event.kind === TASK_KIND_TAX ? "Tax" : "Pay";
+  meta.textContent = CAL_EVENT_SHORT_LABELS[event.kind] ?? "Pay";
   chip.appendChild(meta);
 
   chip.addEventListener("click", e => {
@@ -258,7 +286,7 @@ function renderCalDayPane() {
   if (title) title.textContent = formatTaskDate(calSelectedYmd);
 
   // Read straight from the source so completions tick live without a re-render.
-  const events = (buildAllPayrollTasks(calSelectedYmd, calSelectedYmd) ?? [])
+  const events = (buildAllTasks(calSelectedYmd, calSelectedYmd) ?? [])
     .filter(task => calFilterSelection.has(task.kind))
     .filter(task => !(calHideCompleted && isTaskComplete(task.id)));
 
@@ -277,19 +305,31 @@ function renderCalDayPane() {
   }
 
   body.replaceChildren(...events.map(task => {
+    const unlocked = isTaxTaskUnlocked(task);
     const row = document.createElement("div");
-    row.className = "cal-day-task" + (isTaskComplete(task.id) ? " is-done" : "");
+    row.className = "cal-day-task" + (isTaskComplete(task.id) ? " is-done" : "") + (unlocked ? "" : " is-locked");
 
     const cb = document.createElement("input");
     cb.type = "checkbox";
     cb.className = "cal-day-task-check";
     cb.checked = isTaskComplete(task.id);
+    cb.disabled = !unlocked;
     cb.setAttribute("aria-label", `${task.label} for ${task.companyName}`);
+    if (!unlocked) cb.title = "Complete the paystub for this run first.";
     cb.addEventListener("change", async () => {
-      await setTaskComplete(task.id, cb.checked);
-      row.classList.toggle("is-done", cb.checked);
+      const next = cb.checked;
+      try {
+        await setTaskComplete(task.id, next);
+      } catch (err) {
+        cb.checked = !next;
+        showIndicator(err.message || "Could not update task.", "error");
+        return;
+      }
+      row.classList.toggle("is-done", next);
       renderCalendarGrid();
       applyCalDaySelection();
+      renderUpcomingTasks();
+      if (typeof refreshPayrollViews === "function") refreshPayrollViews(getCompanyById(task.companyId));
     });
 
     const main = document.createElement("div");
@@ -303,7 +343,7 @@ function renderCalDayPane() {
 
     const sub = document.createElement("span");
     sub.className = "cal-day-task-sub";
-    sub.textContent = `${task.label} · ${describeTaskContext(task)}`;
+    sub.textContent = `${task.label} · ${describeAnyTask(task)}`;
     main.append(name, sub);
 
     row.append(cb, main);
@@ -324,7 +364,7 @@ function renderCalDayPane() {
 
 function updateCalFilterButton() {
   const btn = document.getElementById("calFilterBtn");
-  if (btn) btn.classList.toggle("active", calFilterSelection.size < 2 || calHideCompleted);
+  if (btn) btn.classList.toggle("active", calFilterSelection.size < CAL_TASK_KINDS.length || calHideCompleted);
 }
 
 function renderCalFilterList() {
@@ -333,7 +373,8 @@ function renderCalFilterList() {
 
   const options = [
     { key: TASK_KIND_PAYSTUB, label: "Paystub tasks" },
-    { key: TASK_KIND_TAX, label: "Tax payment tasks" },
+    { key: TASK_KIND_TAX, label: "Payroll tax tasks" },
+    { key: TASK_KIND_SALES_TAX, label: "Sales tax tasks" },
   ];
 
   const nodes = options.map(option => {
@@ -348,6 +389,7 @@ function renderCalFilterList() {
       updateCalFilterButton();
       renderCalendarGrid();
       renderCalDayPane();
+      renderUpcomingTasks();
     });
     const span = document.createElement("span");
     span.textContent = option.label;
@@ -365,6 +407,7 @@ function renderCalFilterList() {
     updateCalFilterButton();
     renderCalendarGrid();
     renderCalDayPane();
+    renderUpcomingTasks();
   });
   const hideSpan = document.createElement("span");
   hideSpan.textContent = "Hide completed";
@@ -392,17 +435,98 @@ function toggleCalFilterPopover() {
   pop.style.left = `${Math.min(rect.left, window.innerWidth - pop.offsetWidth - 8)}px`;
 }
 
+// ── Upcoming tasks rail ──────────────────────────────────────────────────────
+
+/** How far ahead the rail beside the calendar looks. */
+const CAL_UPCOMING_DAYS = 30;
+
+/**
+ * The rail shows the same cards the company detail page does — a pay run and
+ * the tax deposit it feeds are one card, not two loose rows — with the
+ * company name added, since this list spans every client.
+ *
+ * A card is a unit of work, so the grid's filters decide which cards appear
+ * rather than reaching inside them: a card shows when any task in it matches,
+ * and keeps all its sub-tasks so the paystub → deposit chain stays readable.
+ */
+function taskPassesCalFilters(task) {
+  if (!task) return false;
+  if (!calFilterSelection.has(task.kind)) return false;
+  return !(calHideCompleted && isTaskComplete(task.id));
+}
+
+function buildUpcomingCardEntries() {
+  const from = todayYmd();
+  const to = ymd(addDays(new Date(), CAL_UPCOMING_DAYS));
+  const onChange = () => renderCalendar();
+  const entries = [];
+
+  getAllCompanies().forEach(company => {
+    if (company.services?.payroll) {
+      groupPayrollRuns(buildPayrollRuns(company, from, to)).forEach(group => {
+        const anyVisible = group.runs.some(run => taskPassesCalFilters(run.paystub)) ||
+                           taskPassesCalFilters(group.tax);
+        if (!anyVisible) return;
+
+        entries.push({
+          sortKey: group.runs[0].paystub.dueDate,
+          company,
+          build: () => group.runs.length > 1
+            ? createBatchedRunCard(company, group, { showCompany: true, onChange })
+            : createPayrollRunCard(company, group.runs[0], { showCompany: true, onChange }),
+        });
+      });
+    }
+
+    if (typeof buildSalesTaxTasks === "function") {
+      buildSalesTaxTasks(company, from, to)
+        .filter(taskPassesCalFilters)
+        .forEach(task => {
+          entries.push({
+            sortKey: task.dueDate,
+            company,
+            build: () => createSalesTaxCard(company, task, { showCompany: true, onChange }),
+          });
+        });
+    }
+  });
+
+  return entries.sort((a, b) =>
+    a.sortKey.localeCompare(b.sortKey) || a.company.name.localeCompare(b.company.name));
+}
+
+function renderUpcomingTasks() {
+  const list = document.getElementById("upcomingTasksList");
+  if (!list) return;
+
+  const entries = buildUpcomingCardEntries();
+
+  const count = document.getElementById("upcomingTasksCount");
+  if (count) count.textContent = entries.length ? String(entries.length) : "";
+
+  if (entries.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "dash-empty";
+    empty.textContent = `Nothing due in the next ${CAL_UPCOMING_DAYS} days.`;
+    list.replaceChildren(empty);
+    return;
+  }
+
+  list.replaceChildren(...entries.map(entry => entry.build()));
+}
+
 // ── Entry points ─────────────────────────────────────────────────────────────
 
 function renderCalendar() {
   renderCalendarGrid();
   renderCalDayPane();
+  renderUpcomingTasks();
   updateCalFilterButton();
 }
 
 /** Cheap no-op unless the calendar is the active view. */
 function refreshCalendarIfActive() {
-  if (getCurrentAppView() === "calendar") renderCalendar();
+  if (getCurrentAppView() === "home") renderCalendar();
 }
 
 function initCalendar() {
@@ -430,6 +554,6 @@ function initCalendar() {
   });
 
   window.addEventListener("resize", () => {
-    if (getCurrentAppView() === "calendar") sizeCalRows();
+    if (getCurrentAppView() === "home") sizeCalRows();
   });
 }

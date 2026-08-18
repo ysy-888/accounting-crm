@@ -20,7 +20,7 @@ function renderCompanyHeaderPills(company) {
 
   // Same rule as the table: a schedule only shows when its service is on.
   const groups = ["Payroll", "Payroll Tax", "Sales Tax"]
-    .map(label => ({ label, values: getCompanyColumnValues(company, label) }))
+    .map(label => ({ label, group: COMPANY_COLUMN_SERVICE[label], values: getCompanyColumnValues(company, label) }))
     .filter(group => group.values.length > 0);
 
   if (groups.length === 0) {
@@ -43,7 +43,12 @@ function renderCompanyHeaderPills(company) {
       const pill = document.createElement("span");
       pill.className = "schedule-pill";
       pill.dataset.schedule = value;
-      pill.textContent = value;
+      pill.dataset.group = group.group;
+      // The title bar is tight now that the tabs share it, so long cadences
+      // show their short form with the full name on hover.
+      const short = getScheduleAbbreviation(value);
+      pill.textContent = short;
+      if (short !== value) pill.title = value;
       item.appendChild(pill);
     });
 
@@ -93,9 +98,13 @@ function renderCompanySectionPanel(company) {
 
   const service = currentSectionKey ? getServiceMeta(currentSectionKey) : null;
 
-  // Payroll is built; the rest still show the placeholder.
+  // Payroll and Sales Tax are built; the rest still show the placeholder.
   if (service?.key === "payroll" && typeof renderPayrollSection === "function") {
     renderPayrollSection(company);
+    return;
+  }
+  if (service?.key === "salesTax" && typeof renderSalesTaxSection === "function") {
+    renderSalesTaxSection(company);
     return;
   }
 
@@ -120,6 +129,69 @@ function renderCompanySectionPanel(company) {
   panel.replaceChildren(wrap);
 }
 
+// ── Notes ────────────────────────────────────────────────────────────────────
+//
+// Edited in place on the detail page rather than behind the Edit dialog: a
+// memo is something you jot mid-call, so it saves itself as you type.
+
+const COMPANY_NOTES_AUTOSAVE_MS = 700;
+
+let notesSaveTimer = null;
+let notesSavedTimer = null;
+
+function setNotesStatus(text, state = "") {
+  const el = document.getElementById("companyNotesStatus");
+  if (!el) return;
+  el.textContent = text;
+  el.className = "company-notes-status" + (state ? ` ${state}` : "");
+}
+
+/** Write the box's current contents through to the store. */
+async function flushCompanyNotes() {
+  clearTimeout(notesSaveTimer);
+  notesSaveTimer = null;
+
+  const box = document.getElementById("companyNotesInput");
+  const company = currentCompanyId ? getCompanyById(currentCompanyId) : null;
+  if (!box || !company || box.value === company.notes) return;
+
+  try {
+    await setCompanyNotes(company.id, box.value);
+    setNotesStatus("Saved", "is-saved");
+    clearTimeout(notesSavedTimer);
+    notesSavedTimer = setTimeout(() => setNotesStatus(""), 1800);
+  } catch (err) {
+    setNotesStatus("Not saved", "is-error");
+    showIndicator(err.message || "Could not save notes.", "error");
+  }
+}
+
+function renderCompanyNotes(company) {
+  const box = document.getElementById("companyNotesInput");
+  if (!box) return;
+  clearTimeout(notesSaveTimer);
+  notesSaveTimer = null;
+  box.value = company?.notes ?? "";
+  setNotesStatus("");
+}
+
+function initCompanyNotes() {
+  const box = document.getElementById("companyNotesInput");
+  if (!box) return;
+
+  box.addEventListener("input", () => {
+    setNotesStatus("Saving…");
+    clearTimeout(notesSaveTimer);
+    notesSaveTimer = setTimeout(flushCompanyNotes, COMPANY_NOTES_AUTOSAVE_MS);
+  });
+
+  // Leaving the box shouldn't wait out the debounce, and neither should
+  // leaving the page — an unsaved memo is the one thing here that can't be
+  // regenerated from anything else.
+  box.addEventListener("blur", flushCompanyNotes);
+  window.addEventListener("beforeunload", flushCompanyNotes);
+}
+
 // ── Open / close ─────────────────────────────────────────────────────────────
 
 function openCompanyDetail(companyId) {
@@ -135,7 +207,7 @@ function openCompanyDetail(companyId) {
   const subtitle = document.getElementById("companyDetailSubtitle");
   if (subtitle) {
     subtitle.replaceChildren();
-    const parts = [getCompanyOwnerName(company), company.location].filter(Boolean);
+    const parts = [getCompanyOwnerName(company), getCompanyLocationDisplay(company)].filter(Boolean);
     parts.forEach((part, i) => {
       if (i > 0) {
         const sep = document.createElement("span");
@@ -149,18 +221,25 @@ function openCompanyDetail(companyId) {
 
   renderCompanyHeaderPills(company);
   renderCompanySectionTabs(company);
+  renderCompanyNotes(company);
+
+  if (typeof resetCompanyMiniCal === "function") resetCompanyMiniCal();
+  if (typeof renderCompanySchedulePanel === "function") renderCompanySchedulePanel(company);
 
   switchAppView("company");
   document.getElementById("companyDetailView")?.scrollTo({ top: 0 });
 }
 
 function closeCompanyDetail() {
+  // Flush before dropping the id the flush needs to resolve the company.
+  flushCompanyNotes();
   currentCompanyId = null;
   currentSectionKey = null;
   switchAppView("companies");
 }
 
 function initCompanyDetail() {
+  initCompanyNotes();
   document.getElementById("companyDetailBackBtn")?.addEventListener("click", closeCompanyDetail);
 
   document.addEventListener("keydown", e => {
