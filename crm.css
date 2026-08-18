@@ -2677,10 +2677,13 @@ td.n41-status-mismatch,
    CRM — Company detail (full page)
    ============================================================ */
 
+/* The detail view is the one scroller: sections size to their content and
+   the whole column scrolls, rather than each panel being a short fixed box
+   with its own scrollbar nested inside the page. */
 .company-detail {
   flex: 1;
   min-height: 0;
-  overflow: hidden; /* the page never scrolls; the panel and sidebar scroll internally */
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   background: var(--bg);
@@ -2700,37 +2703,36 @@ td.n41-status-mismatch,
   max-width: 1400px;
   margin: 0 auto;
   padding: 16px 20px;
-  flex: 1;
-  min-height: 0;
   display: flex;
   flex-direction: column;
 }
 
+/* flex-start, not stretch — the two columns are independent heights now. */
 .company-detail-body {
   display: flex;
-  align-items: stretch;
+  align-items: flex-start;
   gap: 16px;
-  flex: 1;
-  min-height: 0;
 }
 
 .company-detail-main {
   flex: 1;
   min-width: 0;
-  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
+/* The schedule panels stay put while the main column scrolls past them. */
 .company-detail-side {
   flex: 0 0 300px;
   max-width: 300px;
   min-width: 0;
-  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 12px;
+  position: sticky;
+  top: 0;
+  max-height: calc(100vh - 92px);
 }
 
 /* Mini calendar and notes are their natural height; the upcoming list takes
@@ -2739,17 +2741,19 @@ td.n41-status-mismatch,
 .company-upcoming-panel { flex: 1 1 0; min-height: 120px; }
 .company-notes-panel { flex: 0 0 auto; }
 
+/* Icon only — the chevron plus the page context is enough, and the label
+   was taking width the title bar needs. */
 .company-back-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 5px 10px 5px 7px;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  padding: 0;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 6px;
-  font-family: var(--font);
-  font-size: 12px;
-  font-weight: 500;
   color: var(--text-muted);
   cursor: pointer;
 }
@@ -2772,12 +2776,12 @@ td.n41-status-mismatch,
   flex-shrink: 0;
 }
 
-/* Tabs live inline in the title bar here, not as their own underlined row. */
-.company-detail-header .company-section-tabs {
+/* Schedule pills sit in the title bar's right slot, opposite the name. */
+.company-detail-header .company-detail-pills {
   flex: 0 1 auto;
-  min-width: 0;
-  border-bottom: none;
-  margin-bottom: 0;
+  justify-content: flex-end;
+  margin-top: 0;
+  margin-left: auto;
 }
 
 .company-detail-title {
@@ -2858,12 +2862,14 @@ td.n41-status-mismatch,
 }
 
 /* Service section tabs + panels */
+/* Own row above the panel; the column's gap provides the spacing below. */
 .company-section-tabs {
   display: flex;
   gap: 2px;
   border-bottom: 1px solid var(--border);
-  margin-bottom: 16px;
+  margin-bottom: -8px;
   overflow-x: auto;
+  flex-shrink: 0;
 }
 
 .company-section-tab {
@@ -2897,14 +2903,13 @@ td.n41-status-mismatch,
   border-radius: 1px;
 }
 
+/* Sizes to its content — the detail view scrolls, not this box. */
 .company-section-panel {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 22px;
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
+  min-height: 200px;
 }
 
 .company-section-empty {
@@ -4561,18 +4566,15 @@ span.dash-event { cursor: pointer; /* clicking selects the day */ }
 }
 
 @media (max-width: 960px) {
-  /* Not enough width for a fixed side-by-side split — fall back to a
-     normally-scrolling stacked page instead of splitting one fixed height
-     two ways. */
-  .company-detail { overflow-y: auto; }
-  .company-detail-body { flex-direction: column; flex: none; }
-  .company-detail-main { flex: none; min-height: auto; }
-  .company-section-panel { flex: none; overflow-y: visible; min-height: 200px; }
+  /* Too narrow for a side-by-side split — stack the schedule panels under
+     the main column and let them scroll away with it. */
+  .company-detail-body { flex-direction: column; }
   .company-detail-side {
     flex: none;
     max-width: none;
     flex-direction: row;
-    min-height: auto;
+    position: static;
+    max-height: none;
   }
   .company-mini-cal-panel,
   .company-upcoming-panel { flex: 1 1 0; min-width: 0; min-height: 0; }
