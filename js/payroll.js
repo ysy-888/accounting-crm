@@ -25,7 +25,9 @@ const PAYROLL_UPCOMING_DAYS = 60;
 function refreshPayrollViews(company) {
   if (!company) return;
   if (getCurrentAppView() === "company" && currentCompanyId === company.id) {
-    if (currentSectionKey === "payroll") renderPayrollSection(company);
+    // Goes through renderCompanySectionPanel rather than calling the section
+    // renderer directly, so the inactive banner is re-applied with it.
+    if (currentSectionKey === "payroll") renderCompanySectionPanel(company);
     renderCompanySchedulePanel(company);
   }
   if (typeof refreshCalendarIfActive === "function") refreshCalendarIfActive();

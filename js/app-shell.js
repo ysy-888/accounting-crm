@@ -128,7 +128,7 @@ function exportCompaniesCsv() {
 
   const header = [
     "Company Name", "Owner", "Location", "Payroll", "Payroll Tax", "Sales Tax",
-    ...SERVICES.map(s => s.label),
+    ...SERVICES.map(s => s.label), "Notes",
   ];
   const lines = [header.map(csvCell).join(",")];
 
@@ -136,11 +136,13 @@ function exportCompaniesCsv() {
     lines.push([
       company.name,
       getCompanyOwnerName(company),
-      company.location,
-      company.payroll,
-      company.payrollTax,
-      company.salesTax,
+      getCompanyLocationDisplay(company),
+      // The schedule columns read the same as the table: blank when the
+      // service is off, so an inactive client's retained settings don't
+      // export as if they were live.
+      ...["Payroll", "Payroll Tax", "Sales Tax"].map(col => getCompanyColumnValue(company, col)),
       ...SERVICE_KEYS.map(key => (company.services[key] ? "Yes" : "No")),
+      company.notes,
     ].map(csvCell).join(","));
   });
 

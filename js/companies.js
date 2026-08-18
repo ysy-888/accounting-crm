@@ -1,9 +1,9 @@
 /** Companies list view — search, sort, pagination, and row rendering. */
 
-const COMPANY_COLUMNS = ["Company", "Owner", "Location", "Payroll", "Payroll Tax", "Sales Tax", "Services"];
+const COMPANY_COLUMNS = ["Company", "Owner", "Location", "Payroll", "Payroll Tax", "Sales Tax", "Services", "Notes"];
 
 /** Columns the toolbar search scans. */
-const COMPANY_SEARCH_COLUMNS = ["Company", "Owner", "Location", "Payroll", "Payroll Tax", "Sales Tax"];
+const COMPANY_SEARCH_COLUMNS = ["Company", "Owner", "Location", "Payroll", "Payroll Tax", "Sales Tax", "Notes"];
 
 /** Applied when no explicit sort is chosen, and as a tiebreaker. */
 const COMPANY_DEFAULT_SORT_COLUMN = "Company";
@@ -66,6 +66,9 @@ function getCompanyColumnValue(company, col) {
         : "";
     case "Payroll Tax": return isCompanyColumnServiceActive(company, col) ? company.payrollTax : "";
     case "Sales Tax":   return isCompanyColumnServiceActive(company, col) ? company.salesTax : "";
+    // Collapse newlines — the cell is a single line, and a raw break would
+    // just render as a space mid-sentence anyway.
+    case "Notes":       return String(company.notes ?? "").replace(/\s+/g, " ").trim();
     default:            return "";
   }
 }
@@ -360,7 +363,10 @@ function renderCompaniesTable() {
       } else if (getScheduleOptionsForColumn(col)) {
         renderScheduleCell(td, getCompanyColumnValues(company, col), COMPANY_COLUMN_SERVICE[col]);
       } else {
-        mountSearchHighlightedText(td, getCompanyColumnValue(company, col));
+        const value = getCompanyColumnValue(company, col);
+        mountSearchHighlightedText(td, value);
+        // Notes is the one column that routinely overflows its cell.
+        if (col === "Notes" && value) td.title = company.notes;
       }
 
       tr.appendChild(td);

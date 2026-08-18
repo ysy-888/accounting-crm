@@ -385,7 +385,74 @@ function clearCompanyFormErrors() {
   document.getElementById("companyFormName")?.classList.remove("is-invalid");
   const err = document.getElementById("companyFormNameError");
   if (err) err.hidden = true;
+  document.querySelectorAll("#companyForm .service-block-row.is-invalid")
+    .forEach(row => row.classList.remove("is-invalid"));
   setCompanyFormMessage("");
+}
+
+/**
+ * A service that's switched on but left unconfigured generates no tasks and
+ * shows blank columns — it looks broken rather than incomplete. So switching
+ * one on makes its schedule fields required.
+ *
+ * Each entry: the settings row to flag, whether it currently holds a value,
+ * and what to say when it doesn't.
+ */
+function getCompanyFormRequirements() {
+  const services = getSelectedServices();
+  return [
+    {
+      when: services.payroll,
+      containerId: "companyFormPayroll",
+      filled: getSelectedPayrollSchedules().length > 0,
+      message: "Pick at least one payroll schedule, or switch Payroll off.",
+    },
+    {
+      when: services.payroll,
+      containerId: "companyFormPayrollTax",
+      filled: Boolean(getToggleButtonValue("companyFormPayrollTax")),
+      message: "Pick a payroll tax schedule, or switch Payroll off.",
+    },
+    {
+      when: services.salesTax,
+      containerId: "companyFormSalesTax",
+      filled: Boolean(getToggleButtonValue("companyFormSalesTax")),
+      message: "Pick a sales tax schedule, or switch Sales Tax off.",
+    },
+  ];
+}
+
+/**
+ * Re-run validation only once the user has already been shown an error —
+ * flagging fields they haven't reached yet would be nagging, not helping.
+ */
+function revalidateIfShowingErrors() {
+  if (!document.querySelector("#companyForm .service-block-row.is-invalid")) return;
+  document.querySelectorAll("#companyForm .service-block-row.is-invalid")
+    .forEach(row => row.classList.remove("is-invalid"));
+  const message = validateCompanyForm({ scroll: false });
+  setCompanyFormMessage(message, message ? "error" : "");
+}
+
+/**
+ * Flags every unmet requirement; returns the first message, or "" if all
+ * pass. Scrolls to the first problem on an attempted save, but not while
+ * revalidating mid-edit — moving the form under the cursor is disorienting.
+ */
+function validateCompanyForm({ scroll = true } = {}) {
+  const unmet = getCompanyFormRequirements().filter(req => req.when && !req.filled);
+
+  unmet.forEach(req => {
+    document.getElementById(req.containerId)?.closest(".service-block-row")?.classList.add("is-invalid");
+  });
+
+  if (unmet.length === 0) return "";
+  if (scroll) {
+    document.getElementById(unmet[0].containerId)
+      ?.closest(".service-block-row")
+      ?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }
+  return unmet[0].message;
 }
 
 /** Pass a companyId to edit; omit it to create. */
@@ -423,10 +490,11 @@ function openCompanyForm(companyId = null) {
     input.checked = selected.has(input.value);
   });
 
-  // New companies start with every service on — the common case is a client
-  // buying the full package, and unticking is quicker than ticking five.
+  // New companies start with every service off, so what's on is always a
+  // deliberate choice — and each one that's on has to be configured before
+  // the form will save (see validateCompanyForm).
   document.querySelectorAll('#companyForm input[name="service"]').forEach(input => {
-    input.checked = company ? company.services[input.value] === true : true;
+    input.checked = company ? company.services[input.value] === true : false;
     input.closest(".form-service")?.classList.toggle("is-on", input.checked);
   });
   syncAllServiceBlockStates();
@@ -451,11 +519,19 @@ async function saveCompanyForm() {
   const nameInput = document.getElementById("companyFormName");
   const name = (nameInput?.value ?? "").trim();
 
+  clearCompanyFormErrors();
+
   if (!name) {
     nameInput?.classList.add("is-invalid");
     const err = document.getElementById("companyFormNameError");
     if (err) err.hidden = false;
     nameInput?.focus();
+    return;
+  }
+
+  const invalidMessage = validateCompanyForm();
+  if (invalidMessage) {
+    setCompanyFormMessage(invalidMessage, "error");
     return;
   }
 
@@ -566,9 +642,20 @@ function initCompanyForm() {
   document.getElementById("companyFormName")?.addEventListener("input", clearCompanyFormErrors);
   document.getElementById("companyFormState")?.addEventListener("change", updateStateHint);
 
-  // Turning a service off greys out everything nested under it.
+  // Turning a service off greys out everything nested under it — and can
+  // resolve a "configure this first" error, so re-check what's still unmet.
   document.querySelectorAll('.service-block input[name="service"]').forEach(toggle => {
-    toggle.addEventListener("change", () => syncServiceBlockState(toggle.value));
+    toggle.addEventListener("change", () => {
+      syncServiceBlockState(toggle.value);
+      revalidateIfShowingErrors();
+    });
+  });
+
+  // Same for filling in the settings themselves: clear the flag the moment
+  // the requirement is met rather than making them press Save to find out.
+  document.getElementById("companyForm")?.addEventListener("change", revalidateIfShowingErrors);
+  document.getElementById("companyForm")?.addEventListener("click", e => {
+    if (e.target.closest(".form-toggle-btn")) revalidateIfShowingErrors();
   });
 
   // Enter submits from any single-line input; the form has no submit button.

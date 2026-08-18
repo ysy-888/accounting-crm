@@ -189,7 +189,8 @@ function createSalesTaxCard(company, task, { showCompany = false, onChange } = {
 
   const onToggle = onChange ?? (() => {
     if (getCurrentAppView() === "company" && currentSectionKey === "salesTax") {
-      renderSalesTaxSection(getCompanyById(company.id));
+      // Via the panel renderer so the inactive banner is re-applied with it.
+      renderCompanySectionPanel(getCompanyById(company.id));
     }
     if (typeof renderCompanySchedulePanel === "function") {
       renderCompanySchedulePanel(getCompanyById(company.id));

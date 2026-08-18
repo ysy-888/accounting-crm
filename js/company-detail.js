@@ -62,26 +62,39 @@ function getEnabledServices(company) {
   return SERVICES.filter(service => company.services[service.key]);
 }
 
+function isServiceActive(company, serviceKey) {
+  return company?.services?.[serviceKey] === true;
+}
+
+/**
+ * Every service gets a tab, active or not. Switching one off in Edit company
+ * details keeps its schedules and employees — it just stops generating tasks
+ * — so hiding the tab would make that saved setup look lost. Inactive tabs
+ * are muted and their panel says so.
+ */
 function renderCompanySectionTabs(company) {
   const tabs = document.getElementById("companySectionTabs");
   if (!tabs) return;
 
-  const enabled = getEnabledServices(company);
-  tabs.hidden = enabled.length === 0;
+  tabs.hidden = false;
 
-  // The previously selected section may have just been switched off.
-  if (!enabled.some(s => s.key === currentSectionKey)) {
-    currentSectionKey = enabled[0]?.key ?? null;
+  // Prefer landing on something the client actually buys.
+  if (!currentSectionKey) {
+    currentSectionKey = (getEnabledServices(company)[0] ?? SERVICES[0]).key;
   }
 
-  tabs.replaceChildren(...enabled.map(service => {
+  tabs.replaceChildren(...SERVICES.map(service => {
+    const active = isServiceActive(company, service.key);
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.className = "company-section-tab" + (service.key === currentSectionKey ? " is-active" : "");
+    btn.className = "company-section-tab"
+      + (service.key === currentSectionKey ? " is-active" : "")
+      + (active ? "" : " is-inactive");
     btn.dataset.section = service.key;
     btn.setAttribute("role", "tab");
     btn.setAttribute("aria-selected", service.key === currentSectionKey ? "true" : "false");
     btn.textContent = service.label;
+    if (!active) btn.title = `${service.label} is inactive for this client.`;
     btn.addEventListener("click", () => {
       currentSectionKey = service.key;
       renderCompanySectionTabs(company);
@@ -92,19 +105,40 @@ function renderCompanySectionTabs(company) {
   renderCompanySectionPanel(company);
 }
 
+/** Banner shown above an inactive service's saved settings. */
+function createInactiveServiceBanner(service) {
+  const banner = document.createElement("div");
+  banner.className = "service-inactive-banner";
+
+  const badge = document.createElement("span");
+  badge.className = "service-inactive-badge";
+  badge.textContent = "Inactive";
+
+  const text = document.createElement("span");
+  text.textContent = `${service.label} is switched off for this client — the settings below are kept, but no tasks are generated. Turn it back on in Edit company details.`;
+
+  banner.append(badge, text);
+  return banner;
+}
+
 function renderCompanySectionPanel(company) {
   const panel = document.getElementById("companySectionPanel");
   if (!panel) return;
 
   const service = currentSectionKey ? getServiceMeta(currentSectionKey) : null;
+  const inactive = service && !isServiceActive(company, service.key);
 
   // Payroll and Sales Tax are built; the rest still show the placeholder.
+  // Each renders its own panel content, so the inactive banner is prepended
+  // afterwards rather than passed down into them.
   if (service?.key === "payroll" && typeof renderPayrollSection === "function") {
     renderPayrollSection(company);
+    if (inactive) panel.prepend(createInactiveServiceBanner(service));
     return;
   }
   if (service?.key === "salesTax" && typeof renderSalesTaxSection === "function") {
     renderSalesTaxSection(company);
+    if (inactive) panel.prepend(createInactiveServiceBanner(service));
     return;
   }
 
@@ -127,6 +161,7 @@ function renderCompanySectionPanel(company) {
 
   wrap.append(title, text);
   panel.replaceChildren(wrap);
+  if (inactive) panel.prepend(createInactiveServiceBanner(service));
 }
 
 // ── Notes ────────────────────────────────────────────────────────────────────

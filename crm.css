@@ -2593,14 +2593,26 @@ td.n41-status-mismatch,
    ============================================================ */
 
 #companiesTable {
-  min-width: 900px;
+  min-width: 1080px;
 }
 
-#companiesTable .col-company    { width: 260px; min-width: 200px; }
-#companiesTable .col-owner      { width: 170px; min-width: 130px; }
-#companiesTable .col-location   { width: 190px; min-width: 140px; }
-#companiesTable .col-schedule   { width: 130px; min-width: 110px; }
-#companiesTable .col-services   { width: 190px; min-width: 150px; }
+#companiesTable .col-company    { width: 230px; min-width: 180px; }
+#companiesTable .col-owner      { width: 120px; min-width: 95px; }
+#companiesTable .col-location   { width: 130px; min-width: 100px; }
+#companiesTable .col-schedule   { width: 118px; min-width: 100px; }
+#companiesTable .col-services   { width: 120px; min-width: 100px; }
+/* Notes takes whatever is left — it's the one column that benefits from it. */
+#companiesTable .col-notes      { width: auto;  min-width: 180px; }
+
+/* A memo can run long; the row stays one line and the full text is on hover. */
+#companiesTable td[data-col="Notes"] {
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 0; /* lets the ellipsis kick in inside a table cell */
+  color: var(--text-muted);
+}
 
 #companiesTable td[data-col="Company"] {
   text-align: left;
@@ -4803,3 +4815,49 @@ span.dash-event { cursor: pointer; /* clicking selects the day */ }
   padding: 9px;
   margin-top: 2px;
 }
+
+/* ============================================================
+   Service state — inactive sections, and unconfigured settings
+   ============================================================ */
+
+/* An inactive service keeps its tab so its saved setup stays reachable. */
+.company-section-tab.is-inactive { opacity: 0.5; }
+.company-section-tab.is-inactive:hover { opacity: 0.75; }
+
+.company-section-tab.is-inactive.is-active { opacity: 0.85; }
+.company-section-tab.is-inactive.is-active::after { background: var(--text-muted); }
+
+.service-inactive-banner {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 16px;
+  padding: 9px 13px;
+  background: var(--bg);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  font-family: var(--font);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.service-inactive-badge {
+  flex: 0 0 auto;
+  padding: 1px 8px;
+  border-radius: 9px;
+  background: var(--text-muted);
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* A switched-on service whose schedule is still unset blocks the save. */
+.service-block-row.is-invalid {
+  border-radius: 7px;
+  outline: 1px solid var(--danger);
+  outline-offset: 5px;
+}
+
+.service-block-row.is-invalid .form-label { color: var(--danger); }

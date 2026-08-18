@@ -210,8 +210,14 @@ function buildTaxTaskId(companyId, taxDateYmd) {
  * Each pay date yields two: the paystub, and the tax deposit for that run.
  * `date` is the real pay/deposit date; `dueDate` is when the task must be
  * done, pulled back off a weekend. `payDate` is always the run it belongs to.
+ *
+ * A company with Payroll switched off keeps its schedules and employees but
+ * generates nothing — the check lives here rather than at each call site so
+ * an inactive service can't leak tasks into a view that forgot to ask.
  */
 function buildPayrollTasks(company, fromYmd, toYmd) {
+  if (company?.services?.payroll !== true) return [];
+
   const paystubs = [];
   // Deposit date -> the one task covering every run that lands in its window.
   const taxByDate = new Map();
