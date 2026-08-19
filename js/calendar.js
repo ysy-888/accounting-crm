@@ -17,6 +17,15 @@ const CAL_EVENT_SHORT_LABELS = {
   salesTax: "Sales",
 };
 
+/** "month" is the continuously scrolling grid; "week" is a single row. */
+let calViewMode = "month";
+let calWeekStart = null;       // Sunday of the week on screen, in week mode
+
+const CAL_VIEW_MODES = [
+  { key: "month", label: "Month" },
+  { key: "week", label: "Week" },
+];
+
 let calCursor = null;          // { year, month } the arrows/title target
 let calSelectedYmd = "";       // day whose pane is open
 let calScrollEl = null;
@@ -47,8 +56,63 @@ function describeAnyTask(task) {
     : describeTaskContext(task);
 }
 
-/** Hide tasks already ticked off. */
-let calHideCompleted = false;
+/** Completed work is hidden by default; the filter bar opts back into it. */
+let calShowCompleted = false;
+
+/**
+ * Task ids whose whole group is finished.
+ *
+ * "Complete" is a property of the group, not the task: a run is only done
+ * once its paystubs AND the deposit they feed are all ticked off. A paystub
+ * checked while its tax payment is still open belongs to unfinished work, so
+ * it keeps showing.
+ */
+function buildCompletedGroupTaskIds(fromYmd, toYmd) {
+  const done = new Set();
+
+  getAllCompanies().forEach(company => {
+    if (company.services?.payroll) {
+      groupPayrollRuns(buildPayrollRuns(company, fromYmd, toYmd)).forEach(group => {
+        const tasks = [...group.runs.map(r => r.paystub), group.tax].filter(Boolean);
+        if (tasks.every(t => isTaskComplete(t.id))) tasks.forEach(t => done.add(t.id));
+      });
+    }
+    if (typeof buildSalesTaxTasks === "function") {
+      // A sales tax payment is a group of one.
+      buildSalesTaxTasks(company, fromYmd, toYmd)
+        .filter(task => isTaskComplete(task.id))
+        .forEach(task => done.add(task.id));
+    }
+  });
+
+  return done;
+}
+
+let calCompletedGroupIds = null;
+
+function invalidateCompletedGroupCache() {
+  calCompletedGroupIds = null;
+}
+
+/**
+ * Cached because three renderers ask for it per pass. The window is
+ * deliberately wider than anything on screen so a group is never split by
+ * the range — a quarterly deposit sits months away from the runs it covers.
+ */
+function getCalCompletedGroupIds() {
+  if (!calCompletedGroupIds) {
+    calCompletedGroupIds = buildCompletedGroupTaskIds(
+      ymd(addDays(new Date(), -400)),
+      ymd(addDays(new Date(), 500))
+    );
+  }
+  return calCompletedGroupIds;
+}
+
+/** Hidden only when the whole group it belongs to is finished. */
+function isTaskHiddenAsCompleted(task) {
+  return !calShowCompleted && getCalCompletedGroupIds().has(task.id);
+}
 
 // ── Task-group selection ─────────────────────────────────────────────────────
 //
@@ -108,6 +172,13 @@ function attachCalGroupSelection(card, taskIds) {
 // ── Event assembly ───────────────────────────────────────────────────────────
 
 function getCalRange() {
+  // Week mode narrows the whole pipeline — events, filters, the day pane —
+  // to the seven days on screen.
+  if (calViewMode === "week") {
+    const start = getCalWeekStart();
+    return { start, end: addDays(start, 6) };
+  }
+
   const { year, month } = getCalCursor();
   const start = new Date(year, month - CAL_MONTHS_BEFORE, 1);
   start.setDate(start.getDate() - start.getDay());
@@ -124,8 +195,8 @@ function buildCalEventsByDate() {
 
   tasks.forEach(task => {
     if (!calFilterSelection.has(task.kind)) return;
+    if (isTaskHiddenAsCompleted(task)) return;
     const done = isTaskComplete(task.id);
-    if (calHideCompleted && done) return;
     if (!byDate.has(task.dueDate)) byDate.set(task.dueDate, []);
     byDate.get(task.dueDate).push({ ...task, done });
   });
@@ -150,12 +221,72 @@ function setCalTitle(year, month) {
     .toLocaleString(undefined, { month: "long", year: "numeric" });
 }
 
-function stepCalMonth(delta) {
+/** The Sunday that opens the week on screen. */
+function getCalWeekStart() {
+  if (!calWeekStart) {
+    const now = new Date();
+    calWeekStart = addDays(now, -now.getDay());
+  }
+  return calWeekStart;
+}
+
+/** e.g. "Aug 16 – 22, 2026", collapsing the month when the week spans two. */
+function setCalWeekTitle() {
+  const el = document.getElementById("calTitle");
+  if (!el) return;
+  const start = getCalWeekStart();
+  const end = addDays(start, 6);
+  const month = d => d.toLocaleString(undefined, { month: "short" });
+  const left = `${month(start)} ${start.getDate()}`;
+  const right = start.getMonth() === end.getMonth()
+    ? `${end.getDate()}`
+    : `${month(end)} ${end.getDate()}`;
+  el.textContent = `${left} – ${right}, ${end.getFullYear()}`;
+}
+
+/** Step a week or a month, whichever the calendar is currently showing. */
+function stepCalPeriod(delta) {
+  if (calViewMode === "week") {
+    calWeekStart = addDays(getCalWeekStart(), delta * 7);
+    renderCalendar();
+    return;
+  }
+
   const { year, month } = getCalCursor();
   const next = new Date(year, month + delta, 1);
   calCursor = { year: next.getFullYear(), month: next.getMonth() };
   setCalTitle(calCursor.year, calCursor.month);
   scrollCalToMonth(calCursor.year, calCursor.month);
+}
+
+/** Jump back to today in whichever view is open. */
+function goToCalToday() {
+  const now = new Date();
+  if (calViewMode === "week") {
+    calWeekStart = addDays(now, -now.getDay());
+    renderCalendar();
+    return;
+  }
+  calCursor = { year: now.getFullYear(), month: now.getMonth() };
+  setCalTitle(calCursor.year, calCursor.month);
+  scrollCalToMonth(calCursor.year, calCursor.month);
+}
+
+function setCalViewMode(mode) {
+  if (calViewMode === mode) return;
+  calViewMode = mode;
+  // Line the two views up on the same date, so switching doesn't teleport.
+  if (mode === "week") {
+    const { year, month } = getCalCursor();
+    const now = new Date();
+    const anchor = (now.getFullYear() === year && now.getMonth() === month)
+      ? now
+      : new Date(year, month, 1);
+    calWeekStart = addDays(anchor, -anchor.getDay());
+  } else if (calWeekStart) {
+    calCursor = { year: calWeekStart.getFullYear(), month: calWeekStart.getMonth() };
+  }
+  renderCalendar();
 }
 
 function scrollCalToMonth(year, month, { instant = false } = {}) {
@@ -317,7 +448,10 @@ function applyCalCellOverflow(cell) {
     .sort((a, b) => a.rank - b.rank || a.i - b.i)
     .map(entry => entry.chip);
 
-  const cap = Math.max(CAL_MAX_EVENTS, chips.filter(isSelected).length);
+  // Week cells are tall and scroll on their own, so nothing is capped there.
+  const cap = calViewMode === "week"
+    ? ordered.length
+    : Math.max(CAL_MAX_EVENTS, chips.filter(isSelected).length);
   const collapse = ordered.length > cap + 1;
 
   ordered.forEach((chip, i) => {
@@ -340,7 +474,56 @@ function sizeCalRows() {
   calScrollEl.style.setProperty("--dash-cal-row-h", `${Math.max(84, Math.floor(avail / 5))}px`);
 }
 
+/** Weekday header row, shared by both views. */
+function buildCalHeadRow() {
+  const head = document.createElement("div");
+  head.className = "dash-cal-head";
+  WEEKDAY_SHORT.forEach((day, i) => {
+    const cell = document.createElement("div");
+    cell.className = "dash-cal-head-cell";
+    if (i === 0 || i === 6) cell.classList.add("is-weekend");
+    cell.textContent = day;
+    head.appendChild(cell);
+  });
+  return head;
+}
+
+/**
+ * One row of seven days, each tall enough to show its work without an
+ * overflow counter — the point of the week view is seeing everything.
+ */
+function renderCalendarWeekGrid() {
+  const grid = document.getElementById("calGrid");
+  if (!grid) return;
+
+  setCalWeekTitle();
+  const byDate = buildCalEventsByDate();
+  const today = todayYmd();
+  calMonthAnchors = {};
+  calScrollEl = null;
+
+  const wrap = document.createElement("div");
+  wrap.className = "dash-cal-scroll dash-cal-scroll--week dash-scroll";
+  wrap.appendChild(buildCalHeadRow());
+
+  const body = document.createElement("div");
+  body.className = "dash-cal-body dash-cal-body--week";
+  const start = getCalWeekStart();
+  for (let i = 0; i < 7; i++) {
+    body.appendChild(buildCalCell(addDays(start, i), byDate, today));
+  }
+  wrap.appendChild(body);
+
+  grid.replaceChildren(wrap);
+  applyCalGroupSelection();
+}
+
 function renderCalendarGrid() {
+  if (calViewMode === "week") {
+    renderCalendarWeekGrid();
+    return;
+  }
+
   const grid = document.getElementById("calGrid");
   if (!grid) return;
 
@@ -355,16 +538,7 @@ function renderCalendarGrid() {
   const scroll = document.createElement("div");
   scroll.className = "dash-cal-scroll dash-scroll";
 
-  const head = document.createElement("div");
-  head.className = "dash-cal-head";
-  WEEKDAY_SHORT.forEach((day, i) => {
-    const cell = document.createElement("div");
-    cell.className = "dash-cal-head-cell";
-    if (i === 0 || i === 6) cell.classList.add("is-weekend");
-    cell.textContent = day;
-    head.appendChild(cell);
-  });
-  scroll.appendChild(head);
+  scroll.appendChild(buildCalHeadRow());
 
   const body = document.createElement("div");
   body.className = "dash-cal-body";
@@ -523,15 +697,12 @@ function setCalFilterAll() {
 }
 
 function toggleCalFilterKind(key) {
-  if (isCalFilterShowingAll()) {
-    // The first pick out of All narrows to just that kind.
-    calFilterSelection = new Set([key]);
-  } else if (calFilterSelection.has(key)) {
-    calFilterSelection.delete(key);
-    if (calFilterSelection.size === 0) calFilterSelection = new Set(CAL_TASK_KINDS);
-  } else {
-    calFilterSelection.add(key);
-  }
+  const onlyThisKind = !isCalFilterShowingAll() &&
+                       calFilterSelection.size === 1 &&
+                       calFilterSelection.has(key);
+  // One kind at a time: picking another swaps to it, and picking the active
+  // one again releases back to All.
+  calFilterSelection = onlyThisKind ? new Set(CAL_TASK_KINDS) : new Set([key]);
   applyCalFilterChange();
 }
 
@@ -565,12 +736,22 @@ function renderCalFilterBar() {
     return btn;
   });
 
-  const hide = makeBtn("Hide completed", calHideCompleted, () => {
-    calHideCompleted = !calHideCompleted;
+  const showCompleted = makeBtn("Show completed", calShowCompleted, () => {
+    calShowCompleted = !calShowCompleted;
     applyCalFilterChange();
-  }, "cal-filter-btn--hide");
+  }, "cal-filter-btn--completed");
 
-  bar.replaceChildren(all, ...kinds, hide);
+  const views = CAL_VIEW_MODES.map(mode => {
+    const btn = makeBtn(mode.label, calViewMode === mode.key, () => setCalViewMode(mode.key), "cal-view-btn");
+    btn.dataset.view = mode.key;
+    return btn;
+  });
+
+  const viewGroup = document.createElement("div");
+  viewGroup.className = "cal-view-group";
+  viewGroup.append(...views);
+
+  bar.replaceChildren(all, ...kinds, showCompleted, viewGroup);
 }
 
 // ── Upcoming tasks rail ──────────────────────────────────────────────────────
@@ -590,7 +771,7 @@ const CAL_UPCOMING_DAYS = 30;
 function taskPassesCalFilters(task) {
   if (!task) return false;
   if (!calFilterSelection.has(task.kind)) return false;
-  return !(calHideCompleted && isTaskComplete(task.id));
+  return !isTaskHiddenAsCompleted(task);
 }
 
 function buildUpcomingCardEntries() {
@@ -679,6 +860,9 @@ function renderUpcomingTasks() {
 // ── Entry points ─────────────────────────────────────────────────────────────
 
 function renderCalendar() {
+  // Every completion toggle routes back through here, so this is the one
+  // place the group-completion cache needs clearing.
+  invalidateCompletedGroupCache();
   renderCalFilterBar();
   renderCalendarGrid();
   renderCalDayPane();
@@ -691,14 +875,9 @@ function refreshCalendarIfActive() {
 }
 
 function initCalendar() {
-  document.getElementById("calPrev")?.addEventListener("click", () => stepCalMonth(-1));
-  document.getElementById("calNext")?.addEventListener("click", () => stepCalMonth(1));
-  document.getElementById("calToday")?.addEventListener("click", () => {
-    const now = new Date();
-    calCursor = { year: now.getFullYear(), month: now.getMonth() };
-    setCalTitle(calCursor.year, calCursor.month);
-    scrollCalToMonth(calCursor.year, calCursor.month);
-  });
+  document.getElementById("calPrev")?.addEventListener("click", () => stepCalPeriod(-1));
+  document.getElementById("calNext")?.addEventListener("click", () => stepCalPeriod(1));
+  document.getElementById("calToday")?.addEventListener("click", goToCalToday);
 
   document.getElementById("calDayPaneClose")?.addEventListener("click", closeCalDayPane);
 
