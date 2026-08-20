@@ -20,7 +20,7 @@ function renderCompanyHeaderPills(company) {
 
   // Same rule as the table: a schedule only shows when its service is on.
   const groups = ["Payroll", "Payroll Tax", "Sales Tax"]
-    .map(label => ({ label, group: COMPANY_COLUMN_SERVICE[label], values: getCompanyColumnValues(company, label) }))
+    .map(label => ({ label, group: COMPANY_COLUMN_COLOR_GROUP[label], values: getCompanyColumnValues(company, label) }))
     .filter(group => group.values.length > 0);
 
   if (groups.length === 0) {

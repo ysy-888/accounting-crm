@@ -309,13 +309,19 @@ function createTaskCheckbox(task, onChange, { nameOverride } = {}) {
   box.className = "payroll-task-box";
   box.setAttribute("aria-hidden", "true");
 
+  // Same glyph the calendar chips use, so a row and its event read as one
+  // thing. Defined in calendar.js, which loads after this file but well
+  // before any card is built.
+  const icon = typeof createCalEventIcon === "function"
+    ? createCalEventIcon(task.kind)
+    : null;
+  if (icon) icon.classList.add("payroll-task-icon");
+
   const text = document.createElement("span");
   text.className = "payroll-task-text";
 
-  const name = document.createElement("span");
-  name.className = "payroll-task-name";
-  name.textContent = nameOverride ?? task.label;
-
+  // Deadline leads — it's what you're scanning for. What the task is reads
+  // as the supporting line underneath.
   const due = document.createElement("span");
   due.className = "payroll-task-due";
   due.textContent = formatTaskDateShort(task.dueDate);
@@ -324,7 +330,11 @@ function createTaskCheckbox(task, onChange, { nameOverride } = {}) {
     due.title = `Falls on ${formatTaskDate(task.date)}, a weekend — due the Friday before.`;
   }
 
-  text.append(name, due);
+  const name = document.createElement("span");
+  name.className = "payroll-task-name";
+  name.textContent = nameOverride ?? task.label;
+
+  text.append(due, name);
 
   cb.addEventListener("change", async () => {
     const next = cb.checked;
@@ -339,7 +349,9 @@ function createTaskCheckbox(task, onChange, { nameOverride } = {}) {
     onChange?.();
   });
 
-  label.append(cb, box, text);
+  label.append(cb, box);
+  if (icon) label.appendChild(icon);
+  label.appendChild(text);
   return label;
 }
 
@@ -690,7 +702,7 @@ function createBatchedRunCard(company, group, { showCompany = false, onChange } 
   const pill = document.createElement("span");
   pill.className = "schedule-pill";
   pill.dataset.schedule = group.tax.depositor;
-  pill.dataset.group = "payroll";
+  pill.dataset.group = "payrollTax";
   pill.textContent = `${group.tax.depositor} deposit`;
 
   card.appendChild(createCardHeader(company, {

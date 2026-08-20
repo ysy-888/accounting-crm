@@ -2644,6 +2644,7 @@ td.n41-status-mismatch,
 /* Colours come from the schedule-group tokens further down the file; the
    group decides the family, the value decides the hue within it. */
 .schedule-pill[data-group="payroll"],
+.schedule-pill[data-group="payrollTax"],
 .schedule-pill[data-group="salesTax"] {
   background: var(--sched-bg);
   color: var(--sched-fg);
@@ -4671,9 +4672,10 @@ span.dash-event { cursor: pointer; /* clicking selects the day */ }
 /* ============================================================
    Schedule colour families
 
-   Two groups, so a glance tells you which service a chip belongs to:
-     payroll   — blue family (pay schedules AND the payroll tax deposit)
-     salesTax  — amber family
+   Three groups, so a glance tells you which kind of work a chip belongs to:
+     payroll     — azure family (pay schedules)
+     payrollTax  — indigo family (deposit status), matching its chip
+     salesTax    — amber family
 
    Within a family each cadence gets its own hue so the values stay tellable
    apart. The value alone is not enough to pick a colour — "Monthly" is both a
@@ -4685,12 +4687,22 @@ span.dash-event { cursor: pointer; /* clicking selects the day */ }
   --sched-fg: #1f5b96;
   --sched-strong: #2c6fb0;
 }
-[data-group="payroll"][data-schedule="Monthly"]      { --sched-bg: #e6f1fb; --sched-fg: #185fa5; --sched-strong: #1c72c4; }
-[data-group="payroll"][data-schedule="Semi-Monthly"] { --sched-bg: #e8eafb; --sched-fg: #38459c; --sched-strong: #4453bb; }
-[data-group="payroll"][data-schedule="Bi-Weekly"]    { --sched-bg: #dff0f8; --sched-fg: #10627f; --sched-strong: #14789c; }
-[data-group="payroll"][data-schedule="Semi-Weekly"]  { --sched-bg: #dfeaf7; --sched-fg: #27548c; --sched-strong: #3067ab; }
-/* Payroll's Quarterly, not sales tax's — a blue, and a distinct one. */
-[data-group="payroll"][data-schedule="Quarterly"]    { --sched-bg: #e2edf6; --sched-fg: #14507a; --sched-strong: #196394; }
+[data-group="payroll"][data-schedule="Monthly"]      { --sched-bg: #ddeefc; --sched-fg: #0d6ba8; --sched-strong: #1180c6; }
+[data-group="payroll"][data-schedule="Semi-Monthly"] { --sched-bg: #d9edfa; --sched-fg: #0a5c92; --sched-strong: #0e73b5; }
+[data-group="payroll"][data-schedule="Bi-Weekly"]    { --sched-bg: #dbf0f7; --sched-fg: #0e6480; --sched-strong: #127f9f; }
+
+/* Payroll tax is its own family — indigo, matching its calendar chip. It
+   shares values with the pay schedules above ("Monthly" is both a cadence
+   and a depositor status), which is exactly why the group has to be part of
+   the selector rather than the value alone. */
+[data-group="payrollTax"] {
+  --sched-bg: #e0e2f7;
+  --sched-fg: #333f9c;
+  --sched-strong: #3f4cb8;
+}
+[data-group="payrollTax"][data-schedule="Quarterly"]   { --sched-bg: #e2e3f8; --sched-fg: #2e3a93; --sched-strong: #3a48ae; }
+[data-group="payrollTax"][data-schedule="Monthly"]     { --sched-bg: #e4e4f9; --sched-fg: #3b3f9e; --sched-strong: #4a50bd; }
+[data-group="payrollTax"][data-schedule="Semi-Weekly"] { --sched-bg: #dde0f5; --sched-fg: #2a3688; --sched-strong: #3543a5; }
 
 [data-group="salesTax"] {
   --sched-bg: #fbeedb;
@@ -5140,3 +5152,39 @@ span.dash-event { cursor: pointer; /* clicking selects the day */ }
   font-size: 11.5px;
   padding: 3px 7px;
 }
+
+/* ============================================================
+   Task sub-task rows — icon, deadline, then what it is
+   ============================================================ */
+
+.payroll-task-icon {
+  flex: 0 0 auto;
+  width: 13px;
+  height: 13px;
+  color: var(--sched-fg, var(--text-muted));
+}
+
+/* The row's icon takes its kind's colour, same as the calendar chip. */
+.payroll-task[data-kind="paystub"]  .payroll-task-icon { color: #0d6ba8; }
+.payroll-task[data-kind="tax"]      .payroll-task-icon { color: #333f9c; }
+.payroll-task[data-kind="salesTax"] .payroll-task-icon { color: #8a5310; }
+
+/* Deadline leads, the description supports it. */
+.payroll-task-due {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.payroll-task-name {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.payroll-task.is-done .payroll-task-due {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+.payroll-task.is-done .payroll-task-name { text-decoration: none; }

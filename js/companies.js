@@ -37,6 +37,19 @@ const COMPANY_COLUMN_SERVICE = {
   "Sales Tax": "salesTax",
 };
 
+/**
+ * Which colour family a column's values belong to — a finer split than the
+ * service above, because pay schedules and tax deposits are both sold as
+ * "payroll" but read as different work. They share values too ("Monthly" is
+ * a pay cadence in one column and a depositor status in the other), so the
+ * value alone can never pick the colour.
+ */
+const COMPANY_COLUMN_COLOR_GROUP = {
+  "Payroll": "payroll",
+  "Payroll Tax": "payrollTax",
+  "Sales Tax": "salesTax",
+};
+
 function isCompanyColumnServiceActive(company, col) {
   const service = COMPANY_COLUMN_SERVICE[col];
   return !service || company.services?.[service] === true;
@@ -361,7 +374,7 @@ function renderCompaniesTable() {
       if (col === "Services") {
         renderServicesCell(td, company);
       } else if (getScheduleOptionsForColumn(col)) {
-        renderScheduleCell(td, getCompanyColumnValues(company, col), COMPANY_COLUMN_SERVICE[col]);
+        renderScheduleCell(td, getCompanyColumnValues(company, col), COMPANY_COLUMN_COLOR_GROUP[col]);
       } else {
         const value = getCompanyColumnValue(company, col);
         mountSearchHighlightedText(td, value);

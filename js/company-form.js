@@ -467,7 +467,7 @@ function openCompanyForm(companyId = null) {
   fillPayrollCheckboxes();
   fillServiceSwitches();
   fillStateSelect();
-  fillToggleButtons("companyFormPayrollTax", PAYROLL_TAX_SCHEDULES, "Payroll tax deposit schedule", "payroll");
+  fillToggleButtons("companyFormPayrollTax", PAYROLL_TAX_SCHEDULES, "Payroll tax deposit schedule", "payrollTax");
   fillToggleButtons("companyFormSalesTax", SALES_TAX_SCHEDULES, "Sales tax filing schedule", "salesTax");
 
   const title = document.getElementById("companyFormTitle");
