@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Practice CRM</title>
 <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-<link rel="stylesheet" href="crm.css?v=20260821-2312" />
+<link rel="stylesheet" href="crm.css?v=20260821-2321" />
 </head>
 <body>
 
@@ -181,20 +181,27 @@
 
   <!-- ── Bookkeeping (practice-wide year grid) ───────────────── -->
   <div id="bookkeepingView" class="bookkeeping-view" hidden>
-    <div class="bookkeeping-inner">
-      <section class="dashboard-panel bookkeeping-panel">
-        <div class="dashboard-panel-header">
-          <span class="dashboard-panel-title">Bookkeeping</span>
-          <span class="dashboard-panel-count" id="bookkeepingCount"></span>
-          <div class="bk-year-nav bk-view-year-nav">
-            <button type="button" class="btn btn-page" id="bookkeepingPrevYear" title="Previous year" aria-label="Previous year">‹</button>
-            <span class="bk-year-label" id="bookkeepingYear">—</span>
-            <button type="button" class="btn btn-page" id="bookkeepingNextYear" title="Next year" aria-label="Next year">›</button>
-          </div>
+    <div class="bookkeeping-main">
+      <div class="bookkeeping-toolbar">
+        <div class="bk-year-nav">
+          <button type="button" class="btn btn-page" id="bookkeepingPrevYear" title="Previous year" aria-label="Previous year">‹</button>
+          <span class="bk-year-label" id="bookkeepingYear">—</span>
+          <button type="button" class="btn btn-page" id="bookkeepingNextYear" title="Next year" aria-label="Next year">›</button>
         </div>
-        <div class="dashboard-panel-body dash-scroll" id="bookkeepingGrid"></div>
-      </section>
+        <span class="counter" id="bookkeepingCount"></span>
+      </div>
+      <div class="bookkeeping-grid-wrap" id="bookkeepingGrid"></div>
     </div>
+
+    <aside class="bookkeeping-side">
+      <section class="dashboard-panel bk-tasks-panel">
+        <div class="dashboard-panel-header">
+          <span class="dashboard-panel-title" id="bkTasksTitle">Monthly close</span>
+          <span class="dashboard-panel-count" id="bkTasksCount"></span>
+        </div>
+        <div class="dashboard-panel-body dash-scroll" id="bkTasksBody"></div>
+      </section>
+    </aside>
   </div>
 
   <!-- ── Calendar ────────────────────────────────────────────── -->
@@ -396,22 +403,22 @@
 
 <!-- Supabase JS client — auth.js and store.js both depend on the global it exports. -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=20260821-2312"></script>
+<script src="js/config.js?v=20260821-2321"></script>
 <!-- Needs SUPABASE_URL/KEY from config.js and the CDN client above. -->
-<script src="js/auth.js?v=20260821-2312"></script>
-<script src="js/util.js?v=20260821-2312"></script>
-<script src="js/payroll-schedule.js?v=20260821-2312"></script>
-<script src="js/store.js?v=20260821-2312"></script>
-<script src="js/app-shell.js?v=20260821-2312"></script>
-<script src="js/companies-filters.js?v=20260821-2312"></script>
-<script src="js/companies.js?v=20260821-2312"></script>
-<script src="js/company-detail.js?v=20260821-2312"></script>
-<script src="js/company-form.js?v=20260821-2312"></script>
-<script src="js/payroll.js?v=20260821-2312"></script>
+<script src="js/auth.js?v=20260821-2321"></script>
+<script src="js/util.js?v=20260821-2321"></script>
+<script src="js/payroll-schedule.js?v=20260821-2321"></script>
+<script src="js/store.js?v=20260821-2321"></script>
+<script src="js/app-shell.js?v=20260821-2321"></script>
+<script src="js/companies-filters.js?v=20260821-2321"></script>
+<script src="js/companies.js?v=20260821-2321"></script>
+<script src="js/company-detail.js?v=20260821-2321"></script>
+<script src="js/company-form.js?v=20260821-2321"></script>
+<script src="js/payroll.js?v=20260821-2321"></script>
 <!-- After payroll.js — the sales tax section reuses its task checkbox. -->
-<script src="js/sales-tax.js?v=20260821-2312"></script>
-<script src="js/bookkeeping.js?v=20260821-2312"></script>
-<script src="js/calendar.js?v=20260821-2312"></script>
-<script src="js/main.js?v=20260821-2312"></script>
+<script src="js/sales-tax.js?v=20260821-2321"></script>
+<script src="js/bookkeeping.js?v=20260821-2321"></script>
+<script src="js/calendar.js?v=20260821-2321"></script>
+<script src="js/main.js?v=20260821-2321"></script>
 </body>
 </html>

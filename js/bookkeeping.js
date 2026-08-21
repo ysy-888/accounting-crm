@@ -195,9 +195,10 @@ function createAddBookkeepingAccountRow(company) {
   return row;
 }
 
-/** One card per month: the two steps, in order. */
-function createBookkeepingMonthCard(company, monthIndex) {
-  const year = bookkeepingSectionYear;
+/** One card per month: the two steps, in order. Shared by the company
+ *  section and the practice-wide view, so the year and the refresh both come
+ *  from the caller. */
+function createBookkeepingMonthCard(company, monthIndex, year, onChange) {
   const status = getBookkeepingMonthStatus(company.id, year, monthIndex);
   const card = document.createElement("div");
   card.className = "payroll-run bk-month" + (status === "complete" ? " is-complete" : "");
@@ -263,7 +264,7 @@ function createBookkeepingMonthCard(company, monthIndex) {
         showIndicator(err.message || "Could not update.", "error");
         return;
       }
-      renderBookkeepingSection(getCompanyById(company.id));
+      onChange();
     });
 
     label.append(cb, box, text);
@@ -326,7 +327,11 @@ function renderBookkeepingSection(company) {
 
   const months = document.createElement("div");
   months.className = "bk-months";
-  for (let m = 0; m < 12; m++) months.appendChild(createBookkeepingMonthCard(company, m));
+  for (let m = 0; m < 12; m++) {
+    months.appendChild(createBookkeepingMonthCard(
+      company, m, bookkeepingSectionYear,
+      () => renderBookkeepingSection(getCompanyById(company.id))));
+  }
   wrap.appendChild(months);
 
   panel.replaceChildren(wrap);
@@ -336,14 +341,66 @@ function renderBookkeepingSection(company) {
 
 let bookkeepingViewYear = new Date().getFullYear();
 
+/** The client whose months are open in the side panel, or "" for none. */
+let bookkeepingSelectedCompanyId = "";
+
 function stepBookkeepingViewYear(delta) {
   bookkeepingViewYear += delta;
   renderBookkeepingView();
 }
 
+function selectBookkeepingCompany(companyId) {
+  // Clicking the open client again closes the panel.
+  bookkeepingSelectedCompanyId =
+    bookkeepingSelectedCompanyId === companyId ? "" : companyId;
+  renderBookkeepingView();
+}
+
+/**
+ * The selected client's twelve months, beside the grid — the same cards the
+ * company's own Bookkeeping section uses, so ticking here and ticking there
+ * are the same gesture.
+ */
+function renderBookkeepingTasksPanel() {
+  const title = document.getElementById("bkTasksTitle");
+  const count = document.getElementById("bkTasksCount");
+  const body = document.getElementById("bkTasksBody");
+  if (!body) return;
+
+  const company = bookkeepingSelectedCompanyId
+    ? getCompanyById(bookkeepingSelectedCompanyId)
+    : null;
+
+  if (!company) {
+    if (title) title.textContent = "Monthly close";
+    if (count) count.textContent = "";
+    const empty = document.createElement("div");
+    empty.className = "dash-empty";
+    empty.textContent = "Pick a client to work through their months.";
+    body.replaceChildren(empty);
+    return;
+  }
+
+  if (title) title.textContent = company.name;
+  if (count) {
+    count.textContent = `${countBookkeepingMonthsComplete(company.id, bookkeepingViewYear)}/12`;
+  }
+
+  const months = document.createElement("div");
+  months.className = "bk-panel-months";
+  for (let m = 0; m < 12; m++) {
+    months.appendChild(createBookkeepingMonthCard(
+      company, m, bookkeepingViewYear,
+      // A tick has to repaint the grid cell behind it as well as this card.
+      () => renderBookkeepingView()));
+  }
+  body.replaceChildren(months);
+}
+
 /**
  * Every bookkeeping client as a row, Jan–Dec as columns. Each cell is the
- * month's status at a glance, and clicking one opens that company.
+ * month's status at a glance; picking a row opens that client's months in
+ * the panel beside it.
  */
 function renderBookkeepingView() {
   const yearEl = document.getElementById("bookkeepingYear");
@@ -353,6 +410,13 @@ function renderBookkeepingView() {
   if (!body) return;
 
   const companies = getBookkeepingCompanies();
+
+  // A client whose service was switched off shouldn't stay selected.
+  if (bookkeepingSelectedCompanyId &&
+      !companies.some(c => c.id === bookkeepingSelectedCompanyId)) {
+    bookkeepingSelectedCompanyId = "";
+  }
+
   const countEl = document.getElementById("bookkeepingCount");
   if (countEl) {
     countEl.textContent = companies.length
@@ -365,6 +429,7 @@ function renderBookkeepingView() {
     empty.className = "dash-empty";
     empty.textContent = "No clients have Bookkeeping switched on yet.";
     body.replaceChildren(empty);
+    renderBookkeepingTasksPanel();
     return;
   }
 
@@ -395,7 +460,11 @@ function renderBookkeepingView() {
 
   const tbody = document.createElement("tbody");
   companies.forEach(company => {
+    const selected = company.id === bookkeepingSelectedCompanyId;
     const tr = document.createElement("tr");
+    tr.className = "bk-grid-row" + (selected ? " is-selected" : "");
+    tr.dataset.companyId = company.id;
+    tr.addEventListener("click", () => selectBookkeepingCompany(company.id));
 
     const nameCell = document.createElement("th");
     nameCell.className = "bk-grid-company";
@@ -403,8 +472,22 @@ function renderBookkeepingView() {
     nameBtn.type = "button";
     nameBtn.className = "bk-grid-company-btn";
     nameBtn.textContent = company.name;
-    nameBtn.addEventListener("click", () => openCompanyDetail(company.id));
+    nameBtn.setAttribute("aria-pressed", selected ? "true" : "false");
     nameCell.appendChild(nameBtn);
+
+    // Opening the full company page is still one click away, just not the
+    // one that selects — selecting is what this grid is for.
+    const open = document.createElement("button");
+    open.type = "button";
+    open.className = "bk-grid-open-btn";
+    open.title = `Open ${company.name}`;
+    open.setAttribute("aria-label", `Open ${company.name}`);
+    open.textContent = "↗";
+    open.addEventListener("click", e => {
+      e.stopPropagation();
+      openCompanyDetail(company.id);
+    });
+    nameCell.appendChild(open);
     tr.appendChild(nameCell);
 
     for (let m = 0; m < 12; m++) {
@@ -430,6 +513,8 @@ function renderBookkeepingView() {
   });
   table.appendChild(tbody);
   body.replaceChildren(table);
+
+  renderBookkeepingTasksPanel();
 }
 
 function initBookkeepingView() {
