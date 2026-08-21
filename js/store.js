@@ -129,9 +129,21 @@ function normalizeCompany(raw) {
     payrollTax: String(raw?.payrollTax ?? "").trim(),
     salesTax: String(raw?.salesTax ?? "").trim(),
     services: normalizeServices(raw?.services),
+    bookkeepingAccounts: normalizeBookkeepingAccounts(raw?.bookkeepingAccounts),
     // Free-form memo, shown and edited on the detail page.
     notes: String(raw?.notes ?? ""),
   };
+}
+
+/** The accounts reconciled each month — a documented list, like employees. */
+function normalizeBookkeepingAccounts(raw) {
+  return (Array.isArray(raw) ? raw : []).map((account, i) => ({
+    id: String(account?.id ?? `acct-${Date.now()}-${i}`),
+    name: String(account?.name ?? "").trim(),
+    type: BOOKKEEPING_ACCOUNT_TYPES.includes(account?.type)
+      ? account.type
+      : BOOKKEEPING_ACCOUNT_TYPES[0],
+  }));
 }
 
 /** "Oakland, CA" — the two fields recombined for display. */
@@ -173,6 +185,7 @@ function companyRowToInput(row) {
     payrollTax: row.payroll_tax,
     salesTax: row.sales_tax,
     services: row.services,
+    bookkeepingAccounts: row.bookkeeping_accounts,
     notes: row.notes,
   };
 }
@@ -189,6 +202,7 @@ function companyToRow(company) {
     payroll_tax: company.payrollTax,
     sales_tax: company.salesTax,
     services: company.services,
+    bookkeeping_accounts: company.bookkeepingAccounts,
     notes: company.notes,
   };
 }
@@ -386,6 +400,36 @@ async function moveEmployee(companyId, fromSchedule, toSchedule, employeeId) {
   }
   await persistCompany(company);
   return employee;
+}
+
+// ── Bookkeeping accounts ─────────────────────────────────────────────────────
+
+async function addBookkeepingAccount(companyId, name, type) {
+  const trimmed = String(name ?? "").trim();
+  if (!trimmed) throw new Error("Account name is required.");
+
+  const company = getCompanyById(companyId);
+  if (!company) throw new Error(`Company ${companyId} not found.`);
+
+  const account = {
+    id: `acct-${Date.now()}-${company.bookkeepingAccounts.length}`,
+    name: trimmed,
+    type: BOOKKEEPING_ACCOUNT_TYPES.includes(type) ? type : BOOKKEEPING_ACCOUNT_TYPES[0],
+  };
+  company.bookkeepingAccounts.push(account);
+  await persistCompany(company);
+  return account;
+}
+
+async function removeBookkeepingAccount(companyId, accountId) {
+  const company = getCompanyById(companyId);
+  if (!company) throw new Error(`Company ${companyId} not found.`);
+
+  const index = company.bookkeepingAccounts.findIndex(a => a.id === accountId);
+  if (index === -1) return null;
+  const [removed] = company.bookkeepingAccounts.splice(index, 1);
+  await persistCompany(company);
+  return removed;
 }
 
 // ── Task completion ──────────────────────────────────────────────────────────

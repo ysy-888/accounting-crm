@@ -36,6 +36,9 @@ create table if not exists companies (
   payroll_tax text not null default '',
   sales_tax text not null default '',
   services jsonb not null default '{}',
+  -- The accounts reconciled each month. A documented list per company, in
+  -- the same shape as payroll_groups: read and written whole.
+  bookkeeping_accounts jsonb not null default '[]',
   notes text not null default '',
   created_at timestamptz not null default now()
 );
@@ -48,6 +51,10 @@ create table if not exists completed_tasks (
   created_at timestamptz not null default now(),
   primary key (user_id, task_id)
 );
+
+-- Existing projects: this column was added after the first release, so bring
+-- it in without touching anything else.
+alter table companies add column if not exists bookkeeping_accounts jsonb not null default '[]';
 
 alter table owners enable row level security;
 alter table companies enable row level security;

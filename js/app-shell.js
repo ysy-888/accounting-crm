@@ -7,7 +7,7 @@
  * (toolbar, footer pagination) hides with it.
  */
 
-const APP_VIEWS = ["home", "companies", "company"];
+const APP_VIEWS = ["home", "companies", "company", "bookkeeping"];
 
 let currentAppView = "home";
 
@@ -28,6 +28,7 @@ function switchAppView(view) {
     companiesTableWrap: view === "companies",
     companyDetailView: view === "company",
     calendarWrap: view === "home",
+    bookkeepingView: view === "bookkeeping",
     // Pagination belongs to the list only.
     appFooterEnd: view === "companies",
   };
@@ -41,6 +42,7 @@ function switchAppView(view) {
   const tabs = {
     navLogoHome: view === "home",
     navTabCompanies: view === "companies" || view === "company",
+    navTabBookkeeping: view === "bookkeeping",
   };
   Object.entries(tabs).forEach(([id, active]) => {
     const el = document.getElementById(id);
@@ -54,6 +56,7 @@ function switchAppView(view) {
   }
   // The grid needs real layout to size its rows, so render on entry.
   if (view === "home" && typeof renderCalendar === "function") renderCalendar();
+  if (view === "bookkeeping" && typeof renderBookkeepingView === "function") renderBookkeepingView();
 }
 
 // ── Header menu ──────────────────────────────────────────────────────────────
@@ -161,6 +164,7 @@ function exportCompaniesCsv() {
 function initAppNav() {
   document.getElementById("navTabCompanies")?.addEventListener("click", () => switchAppView("companies"));
   document.getElementById("navLogoHome")?.addEventListener("click", () => switchAppView("home"));
+  document.getElementById("navTabBookkeeping")?.addEventListener("click", () => switchAppView("bookkeeping"));
 
   document.getElementById("refreshBtn")?.addEventListener("click", async () => {
     setAppLoading(true, "Refreshing…");

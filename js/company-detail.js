@@ -104,13 +104,18 @@ function renderCompanySectionPanel(company) {
 
   const service = currentSectionKey ? getServiceMeta(currentSectionKey) : null;
 
-  // Payroll and Sales Tax are built; the rest still show the placeholder.
+  // Payroll, Sales Tax and Bookkeeping are built; the rest still show the
+  // placeholder.
   if (service?.key === "payroll" && typeof renderPayrollSection === "function") {
     renderPayrollSection(company);
     return;
   }
   if (service?.key === "salesTax" && typeof renderSalesTaxSection === "function") {
     renderSalesTaxSection(company);
+    return;
+  }
+  if (service?.key === "bookkeeping" && typeof renderBookkeepingSection === "function") {
+    renderBookkeepingSection(company);
     return;
   }
 

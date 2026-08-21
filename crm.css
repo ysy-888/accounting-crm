@@ -5188,3 +5188,191 @@ span.dash-event { cursor: pointer; /* clicking selects the day */ }
 }
 
 .payroll-task.is-done .payroll-task-name { text-decoration: none; }
+
+/* ============================================================
+   Bookkeeping — company section
+   ============================================================ */
+
+.bk-section { gap: 0; }
+
+.bk-accounts { margin-top: 0; padding-top: 0; border-top: none; margin-bottom: 22px; }
+
+.bk-account-type {
+  padding: 1px 8px;
+  border-radius: 9px;
+  font-family: var(--font);
+  font-size: 10.5px;
+  font-weight: 600;
+  background: var(--accent-light);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.bk-account-type[data-type="Checking Account"] { background: #ddeefc; color: #0d6ba8; }
+.bk-account-type[data-type="Credit Card"]      { background: #f0e6f8; color: #6b3fa0; }
+
+.bk-add-account { align-items: center; }
+.bk-account-type-select {
+  flex: 0 0 150px;
+  appearance: none;
+  padding-right: 24px;
+  background-image: var(--icon-caret-down);
+  background-repeat: no-repeat;
+  background-position: right 7px center;
+  background-size: 12px;
+  cursor: pointer;
+}
+
+.bk-year-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.bk-year-header .company-section-title { margin-bottom: 0; }
+
+.bk-year-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bk-year-label {
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  min-width: 42px;
+  text-align: center;
+}
+
+.bk-year-count {
+  font-family: var(--font);
+  font-size: 11.5px;
+  color: var(--text-muted);
+  margin-left: 6px;
+}
+
+/* Four across on a roomy panel, collapsing as it narrows. */
+.bk-months {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 10px;
+}
+
+.bk-month { border-left-color: var(--border); }
+.bk-month[data-status="statement"] { border-left-color: #d9a43a; }
+.bk-month[data-status="complete"]  { border-left-color: #4a9d5f; }
+
+.bk-month-name { font-size: 13px; }
+
+.bk-steps { flex-direction: column; gap: 5px; }
+.bk-step { flex: 1 1 auto; }
+.bk-step-name { font-size: 12px; font-weight: 600; color: var(--text); }
+.bk-step.is-done .bk-step-name { color: var(--text-muted); text-decoration: line-through; }
+
+/* ============================================================
+   Bookkeeping — practice-wide year grid
+   ============================================================ */
+
+.bookkeeping-view {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+.bookkeeping-view[hidden] { display: none !important; }
+
+.bookkeeping-inner {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 16px 20px;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.bookkeeping-panel { flex: 1; min-height: 0; }
+
+.bk-view-year-nav { margin-left: auto; }
+
+.bk-grid {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-family: var(--font);
+}
+
+.bk-grid th,
+.bk-grid td {
+  padding: 7px 6px;
+  text-align: center;
+  font-size: 11.5px;
+  border-bottom: 1px solid var(--border);
+}
+
+.bk-grid thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--surface);
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.bk-grid thead th.is-current { color: var(--text); background: var(--accent-light); }
+
+.bk-grid-company-head,
+.bk-grid-company {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--surface);
+  text-align: left;
+  min-width: 190px;
+}
+
+.bk-grid-company-head { z-index: 3; }
+
+.bk-grid-company-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: var(--font);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.bk-grid-company-btn:hover { text-decoration: underline; }
+
+.bk-grid-cell { cursor: default; }
+
+/* A filled square reads faster than a tick across twelve columns. */
+.bk-cell-mark {
+  display: inline-block;
+  width: 15px;
+  height: 15px;
+  border-radius: 4px;
+  background: var(--bg);
+  border: 1px solid var(--border-strong);
+}
+
+.bk-grid-cell[data-status="statement"] .bk-cell-mark { background: #f5d78b; border-color: #d9a43a; }
+.bk-grid-cell[data-status="complete"]  .bk-cell-mark { background: #4a9d5f; border-color: #3f8850; }
+
+.bk-grid-total-head,
+.bk-grid-total {
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+}

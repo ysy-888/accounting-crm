@@ -35,6 +35,7 @@ async function bootApp() {
   initCompanyForm();
   initCalendar();
   initCompanyMiniCal();
+  initBookkeepingView();
 
   if (!isSupabaseConfigured()) {
     setAppLoading(false);

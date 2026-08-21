@@ -97,6 +97,13 @@ function getStateName(code) {
 }
 
 /**
+ * Bookkeeping account types. Accounts are a documented list per company —
+ * what gets reconciled — in the same way employees are listed under a payroll
+ * group. The monthly tasks are per company, not per account.
+ */
+const BOOKKEEPING_ACCOUNT_TYPES = ["Checking Account", "Credit Card"];
+
+/**
  * The five service areas a company can be signed up for. `key` is what is
  * stored on the company record; `label` is what the UI shows.
  */

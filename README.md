@@ -56,6 +56,7 @@ index.html so the URLs change on every deploy.
 | `js/company-form.js` | Add / edit company modal and the detail-page menu |
 | `js/payroll-schedule.js` | Pay date / tax due date engine — pure date math, no DOM |
 | `js/payroll.js` | Payroll section: schedule groups, employees, upcoming tasks |
+| `js/bookkeeping.js` | Bookkeeping: monthly close per company, plus the practice-wide year grid |
 | `js/calendar.js` | Calendar view of every payroll task across all clients |
 | `js/main.js` | Boot |
 
@@ -152,8 +153,34 @@ Only completion is stored (`practiceCrm.completedTasks`). The tasks
 themselves are always regenerated from the schedules, so there is no calendar
 to backfill.
 
+## Bookkeeping
+
+Deliberately outside the task calendar. Payroll and sales tax have deadlines
+derived from schedules and states; bookkeeping is a two-step close you work
+through per month with no due date to place on a grid — so these tasks appear
+only in the company's Bookkeeping section and the practice-wide **Bookkeeping**
+tab, never on the calendar or in the task rails.
+
+Each month has two parts, in order:
+
+| Step | Meaning |
+|---|---|
+| Statement | The month's statements are in hand |
+| Bookkeeping | The books for that month are done |
+
+The second is locked until the first is ticked, and reopening the statements
+reopens the books with them — closed books resting on statements you no longer
+have is the state to avoid.
+
+Accounts (Checking Account / Credit Card) are a documented list of what gets
+reconciled, in the same spirit as employees under a payroll group: they say
+what the work covers without each one becoming its own task.
+
+The **Bookkeeping** tab lists every client with the service switched on, one
+row each, Jan–Dec across — not started, statements in, or closed.
+
 ## Not built yet
 
-- Bookkeeping, Registration, and Reporting section bodies
+- Registration and Reporting section bodies
 - Federal holiday handling
 - Email functionality (to be carried over from the PO App Apps Script relay)
