@@ -468,12 +468,14 @@ function renderBookkeepingView() {
 
     const nameCell = document.createElement("th");
     nameCell.className = "bk-grid-company";
+    const nameInner = document.createElement("div");
+    nameInner.className = "bk-grid-company-inner";
     const nameBtn = document.createElement("button");
     nameBtn.type = "button";
     nameBtn.className = "bk-grid-company-btn";
     nameBtn.textContent = company.name;
     nameBtn.setAttribute("aria-pressed", selected ? "true" : "false");
-    nameCell.appendChild(nameBtn);
+    nameInner.appendChild(nameBtn);
 
     // Opening the full company page is still one click away, just not the
     // one that selects — selecting is what this grid is for.
@@ -487,7 +489,8 @@ function renderBookkeepingView() {
       e.stopPropagation();
       openCompanyDetail(company.id);
     });
-    nameCell.appendChild(open);
+    nameInner.appendChild(open);
+    nameCell.appendChild(nameInner);
     tr.appendChild(nameCell);
 
     for (let m = 0; m < 12; m++) {

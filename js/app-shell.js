@@ -11,6 +11,15 @@ const APP_VIEWS = ["home", "companies", "company", "bookkeeping"];
 
 let currentAppView = "home";
 
+/**
+ * Where the header's back button goes. Only view changes are recorded, so
+ * moving between two companies stays one entry — going back from a company
+ * lands on whatever you were looking at before you opened one, whether that
+ * was the list, the calendar, or the bookkeeping grid.
+ */
+const appViewHistory = [];
+let navigatingBack = false;
+
 function getCurrentAppView() {
   return currentAppView;
 }
@@ -19,8 +28,31 @@ function isCompaniesViewActive() {
   return currentAppView === "companies";
 }
 
+function updateAppBackButton() {
+  const btn = document.getElementById("appBackBtn");
+  if (btn) btn.disabled = appViewHistory.length === 0;
+}
+
+/** Step back one view. `fallback` covers arriving with nothing behind you. */
+function goBackAppView(fallback = "") {
+  const previous = appViewHistory.pop();
+  const target = previous ?? fallback;
+  if (!target) return;
+
+  navigatingBack = true;
+  switchAppView(target);
+  navigatingBack = false;
+  updateAppBackButton();
+}
+
 function switchAppView(view) {
   if (!APP_VIEWS.includes(view)) return;
+
+  if (!navigatingBack && currentAppView !== view) {
+    appViewHistory.push(currentAppView);
+    // A session's worth of back steps is plenty; don't grow without bound.
+    if (appViewHistory.length > 50) appViewHistory.shift();
+  }
   currentAppView = view;
 
   const panes = {
@@ -57,6 +89,7 @@ function switchAppView(view) {
   // The grid needs real layout to size its rows, so render on entry.
   if (view === "home" && typeof renderCalendar === "function") renderCalendar();
   if (view === "bookkeeping" && typeof renderBookkeepingView === "function") renderBookkeepingView();
+  updateAppBackButton();
 }
 
 // ── Header menu ──────────────────────────────────────────────────────────────
@@ -165,6 +198,7 @@ function initAppNav() {
   document.getElementById("navTabCompanies")?.addEventListener("click", () => switchAppView("companies"));
   document.getElementById("navLogoHome")?.addEventListener("click", () => switchAppView("home"));
   document.getElementById("navTabBookkeeping")?.addEventListener("click", () => switchAppView("bookkeeping"));
+  document.getElementById("appBackBtn")?.addEventListener("click", () => goBackAppView("home"));
 
   document.getElementById("refreshBtn")?.addEventListener("click", async () => {
     setAppLoading(true, "Refreshing…");

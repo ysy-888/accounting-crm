@@ -246,12 +246,12 @@ function closeCompanyDetail() {
   flushCompanyNotes();
   currentCompanyId = null;
   currentSectionKey = null;
-  switchAppView("companies");
+  // Back to wherever the company was opened from, not always the list.
+  goBackAppView("companies");
 }
 
 function initCompanyDetail() {
   initCompanyNotes();
-  document.getElementById("companyDetailBackBtn")?.addEventListener("click", closeCompanyDetail);
 
   document.addEventListener("keydown", e => {
     if (e.key !== "Escape") return;
