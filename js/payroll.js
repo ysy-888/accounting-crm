@@ -650,7 +650,6 @@ function createPayrollRunCard(company, run, { showCompany = false, onChange } = 
     showCompany,
     heading: payrollCardHeading([run.schedule], run.payDate),
     pill,
-    count: `${run.paystub.employeeCount} employee${run.paystub.employeeCount === 1 ? "" : "s"}`,
     complete,
   }));
 

@@ -3896,11 +3896,13 @@ span.dash-event { cursor: pointer; /* clicking selects the day */ }
   outline-offset: 2px;
 }
 
+/* Date and type sit side by side, so a task row is one line tall. */
 .payroll-task-text {
   display: flex;
-  flex-direction: column;
-  gap: 1px;
+  align-items: baseline;
+  gap: 7px;
   min-width: 0;
+  flex: 1;
 }
 
 .payroll-task-name {
@@ -5476,3 +5478,57 @@ span.dash-event { cursor: pointer; /* clicking selects the day */ }
   opacity: 0.3;
   cursor: default;
 }
+
+/* ── Task rows on one line ── */
+
+.payroll-task {
+  align-items: center;
+  padding: 5px 10px;
+}
+
+.payroll-task-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.payroll-task-due { white-space: nowrap; }
+
+/* ============================================================
+   Day cell open-task count + day pane tabs
+   ============================================================ */
+
+/* Absolutely placed so it stays out of the cell's flex order — the chip
+   hoisting logic reorders everything else in there. */
+.dash-cal-open-count {
+  position: absolute;
+  top: 3px;
+  right: 4px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--accent-light);
+  color: var(--text-muted);
+  font-family: var(--font);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  pointer-events: none;
+}
+
+.dash-cal-cell.is-today .dash-cal-open-count,
+.dash-cal-cell.is-selected .dash-cal-open-count {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* The pane's second header row carries the Open / Completed split. */
+.day-pane-tabs-row {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.dashboard-day-pane .task-tabs { flex: 1; }

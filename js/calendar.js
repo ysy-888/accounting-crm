@@ -401,6 +401,18 @@ function buildCalCell(date, byDate, today) {
   }
   cell.appendChild(num);
 
+  // How much is still outstanding on this day, at a glance. Counts tasks,
+  // not cards: a run whose paystub lands here is one thing to do today even
+  // though its deposit is weeks out.
+  const openCount = (byDate.get(cellYmd) ?? []).filter(event => !event.done).length;
+  if (openCount > 0) {
+    const badge = document.createElement("span");
+    badge.className = "dash-cal-open-count";
+    badge.textContent = String(openCount);
+    badge.title = ` still open`;
+    cell.appendChild(badge);
+  }
+
   // Every event is rendered; which ones actually show is decided by
   // applyCalCellOverflow, so selecting a group can reveal one that was
   // sitting inside "+N more" without rebuilding the grid.
@@ -601,12 +613,16 @@ function buildDayPaneEntries(dayYmd) {
     if (company.services?.payroll) {
       groupPayrollRuns(buildPayrollRuns(company, from, to)).forEach(group => {
         const tasks = [...group.runs.map(r => r.paystub), group.tax].filter(Boolean);
-        const onThisDay = tasks.filter(t => t.dueDate === dayYmd && taskPassesCalFilters(t));
+        // Kind filter only: the pane has its own Completed tab, so hiding
+        // finished work here would empty the tab that exists to show it.
+        const onThisDay = tasks.filter(t => t.dueDate === dayYmd && calFilterSelection.has(t.kind));
         if (onThisDay.length === 0) return;
 
         entries.push({
           company,
           taskIds: tasks.map(t => t.id),
+          // What is actually due today, which is what this day is judged on.
+          dayTaskIds: onThisDay.map(t => t.id),
           build: () => group.runs.length > 1
             ? createBatchedRunCard(company, group, { showCompany: true, onChange })
             : createPayrollRunCard(company, group.runs[0], { showCompany: true, onChange }),
@@ -616,11 +632,12 @@ function buildDayPaneEntries(dayYmd) {
 
     if (typeof buildSalesTaxTasks === "function") {
       buildSalesTaxTasks(company, from, to)
-        .filter(t => t.dueDate === dayYmd && taskPassesCalFilters(t))
+        .filter(t => t.dueDate === dayYmd && calFilterSelection.has(t.kind))
         .forEach(task => {
           entries.push({
             company,
             taskIds: [task.id],
+            dayTaskIds: [task.id],
             build: () => createSalesTaxCard(company, task, { showCompany: true, onChange }),
           });
         });
@@ -650,28 +667,84 @@ function renderCalDayPane() {
   const title = document.getElementById("calDayPaneTitle");
   if (title) title.textContent = formatTaskDate(calSelectedYmd);
 
-  const entries = buildDayPaneEntries(calSelectedYmd);
+  // A card is judged on what it owes *today*, not on the whole group: a run
+  // whose paystub is ticked here is done for this date even though its
+  // deposit is still open weeks out, and it should move accordingly.
+  const entries = buildDayPaneEntries(calSelectedYmd).map(entry => ({
+    ...entry,
+    done: entry.dayTaskIds.every(id => isTaskComplete(id)),
+  }));
 
+  const open = entries.filter(entry => !entry.done);
+  const done = entries.filter(entry => entry.done);
+  const openTaskCount = entries
+    .reduce((n, entry) => n + entry.dayTaskIds.filter(id => !isTaskComplete(id)).length, 0);
+
+  // The header count is what's left to do on this day, matching the badge
+  // on the calendar cell.
   const count = document.getElementById("calDayPaneCount");
-  if (count) count.textContent = entries.length ? String(entries.length) : "";
+  if (count) count.textContent = openTaskCount ? String(openTaskCount) : "";
+
+  if (!DAY_PANE_TABS.some(tab => tab.key === calDayPaneTab)) calDayPaneTab = "open";
+  renderDayPaneTabs({ open: open.length, done: done.length });
 
   const body = document.getElementById("calDayPaneList");
   if (!body) return;
 
-  if (entries.length === 0) {
+  const shown = calDayPaneTab === "done" ? done : open;
+
+  if (shown.length === 0) {
     const empty = document.createElement("div");
     empty.className = "dash-empty";
-    empty.textContent = "Nothing due this day.";
+    empty.textContent = entries.length === 0
+      ? "Nothing due this day."
+      : calDayPaneTab === "done" ? "Nothing completed yet." : "All done for this day.";
     body.replaceChildren(empty);
     return;
   }
 
-  body.replaceChildren(...entries.map(entry => {
+  body.replaceChildren(...shown.map(entry => {
     const card = entry.build();
     attachCalGroupSelection(card, entry.taskIds);
     return card;
   }));
   applyCalGroupSelection();
+}
+
+const DAY_PANE_TABS = [
+  { key: "open", label: "Open" },
+  { key: "done", label: "Completed" },
+];
+
+/** Which bucket the open day is showing. */
+let calDayPaneTab = "open";
+
+function renderDayPaneTabs(counts) {
+  const wrap = document.getElementById("calDayPaneTabs");
+  if (!wrap) return;
+
+  wrap.replaceChildren(...DAY_PANE_TABS.map(tab => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "task-tab" + (tab.key === calDayPaneTab ? " is-active" : "");
+    btn.dataset.status = tab.key;
+    btn.setAttribute("role", "tab");
+    btn.setAttribute("aria-selected", tab.key === calDayPaneTab ? "true" : "false");
+    btn.textContent = tab.label;
+
+    const n = counts[tab.key] ?? 0;
+    if (n > 0) {
+      const badge = document.createElement("span");
+      badge.className = "task-tab-count";
+      badge.textContent = String(n);
+      btn.appendChild(badge);
+    }
+    btn.addEventListener("click", () => {
+      calDayPaneTab = tab.key;
+      renderCalDayPane();
+    });
+    return btn;
+  }));
 }
 
 // ── Filter bar ───────────────────────────────────────────────────────────────
